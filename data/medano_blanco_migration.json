@@ -1,0 +1,18 @@
+{
+  "site": "Médano Blanco (Sechura)",
+  "lat": -5.5565,
+  "lon": -80.7567,
+  "crs": "EPSG:32717",
+  "n_scenes": 43,
+  "first": "2019-03-31",
+  "last": "2026-08-21",
+  "speed_m_per_yr": 0.32,
+  "speed_east_m_per_yr": -0.31,
+  "speed_north_m_per_yr": -0.08,
+  "bearing_deg": 256.4,
+  "fit_rms_m": 1.9,
+  "speed_sigma_m_per_yr": 0.13,
+  "reference_scene": "2019-03-31",
+  "method": "Sentinel-2 L2A 10 m; masked normalised cross-correlation of the dune pixels (reference scene outline, dilated 30 m) with sub-pixel peak; linear fit of shift vs time",
+  "generated": "2026-11-14"
+}

@@ -1,7 +1,11 @@
+import io
 import os
+import json
 import time
 from concurrent.futures import ThreadPoolExecutor
 import numpy as np
+from PIL import Image
+from scipy import ndimage
 import pandas as pd
 import requests
 import urllib3
@@ -16,29 +20,59 @@ from streamlit_folium import st_folium
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 UA = {"User-Agent": "Mozilla/5.0 (ALTERGEA analog-site tool)"}
 
-st.set_page_config(page_title="ALTERGEA · Analog Site Intelligence", page_icon="🔺", layout="wide")
+LOGO = next((f for f in ("logo.jpg", "logo.jpeg", "logo.png") if os.path.exists(f)), None)
+st.set_page_config(page_title="ALTERGEA · Analog Site Intelligence", page_icon=LOGO or "◆", layout="wide")
 
-NAVY, SKY, YEL, ORG, RED = "#0d1b5e", "#1fa2e8", "#fdb913", "#f08a00", "#e8212b"
-SCALE = [RED, ORG, YEL, SKY]
-BRAND = [NAVY, RED, YEL, SKY, ORG]
+# Palette: navy carries text and primary data, sky is the interactive accent, red is reserved for Mars.
+# Score ramp is single-hue (navy → light) so colour reads as "how strong", never as a rainbow.
+NAVY, SKY, RED = "#0d1b5e", "#1fa2e8", "#c8102e"
+INK, MUTED, RULE = "#1b2340", "#5f6b85", "#d9deea"
+SCALE = ["#d6dce8", "#8fbfe3", "#2f7fc1", NAVY]          # Weak · Moderate · Strong · Prime
+BRAND = [NAVY, "#2f7fc1", "#8fbfe3", RED, "#8a93ad"]
 
 st.markdown(f"""
 <style>
-.block-container{{padding-top:1.4rem;max-width:1500px}}
-.hero-title{{font-size:2.1rem;font-weight:800;letter-spacing:.18em;color:{NAVY};margin:0;line-height:1.1}}
-.hero-sub{{color:#5a6488;margin:6px 0 10px;font-size:1rem}}
-.bar{{height:5px;border-radius:4px;margin:10px 0 16px;
-      background:linear-gradient(90deg,{SKY},{YEL},{ORG},{RED})}}
-.pill{{display:inline-block;padding:2px 11px;border:1px solid #c9d0ea;border-radius:999px;background:#fff;
-      font-size:.72rem;color:{NAVY};margin-right:6px;letter-spacing:.06em;font-weight:600}}
-.pill.red{{border-color:{RED};color:{RED}}}
-.kpi{{background:#fff;border:1px solid #e3e7f3;border-left:5px solid {SKY};border-radius:12px;
-     padding:12px 16px;margin-bottom:8px;box-shadow:0 1px 4px rgba(13,27,94,.06)}}
-.kpi .l{{font-size:.68rem;letter-spacing:.12em;color:#6b7597;text-transform:uppercase;font-weight:600}}
-.kpi .v{{font-size:1.4rem;font-weight:800;color:{NAVY}}}
-.kpi .s{{font-size:.8rem;color:#6b7597}}
-.legend span{{display:inline-block;margin-right:16px;font-size:.85rem;color:{NAVY}}}
-.dot{{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:6px}}
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+html, body, p, li, h1, h2, h3, label, .stMarkdown, .stDataFrame, .stTable, input, select, textarea,
+div[data-testid="stMetricValue"], div[data-testid="stMetricLabel"], button[data-baseweb="tab"] p,
+.stButton button p, .stDownloadButton button p, div[data-baseweb="select"] div {{
+  font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}}
+span[data-testid="stIconMaterial"], .material-symbols-rounded, [class*="material-symbols"] {{
+  font-family: "Material Symbols Rounded" !important;
+}}
+.mast p, p.meta {{ margin:0; }}
+::selection {{ background:{SKY}33; color:{INK}; }}
+.block-container {{ padding-top:3.4rem; max-width:1500px; }}
+header[data-testid="stHeader"] {{ background:rgba(255,255,255,.85); }}
+h1, h2, h3 {{ color:{INK}; letter-spacing:-0.01em; }}
+.stMarkdown h3 {{ font-size:1.05rem; font-weight:600; margin-top:1.6rem; }}
+p, li {{ color:{INK}; }}
+.mast {{ display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }}
+.mast .wordmark {{ font-size:1.5rem; font-weight:600; letter-spacing:.16em; color:{NAVY}; margin:0; }}
+.mast .desc {{ font-size:.95rem; color:{MUTED}; margin:0; }}
+.meta {{ font-size:.8rem; color:{MUTED}; margin:4px 0 0; letter-spacing:.01em; }}
+.meta b {{ color:{INK}; font-weight:500; }}
+.rule {{ height:1px; background:{RULE}; margin:12px 0 18px; }}
+.stat {{ padding:2px 0 6px; border-right:1px solid {RULE}; margin-right:18px; }}
+.stat:last-child {{ border-right:0; }}
+.stat .l {{ font-size:.72rem; color:{MUTED}; letter-spacing:.04em; text-transform:uppercase; font-weight:500; }}
+.stat .v {{ font-size:1.3rem; font-weight:600; color:{INK}; line-height:1.25; margin-top:2px; word-break:normal; }}
+.stat .s {{ font-size:.8rem; color:{MUTED}; }}
+.legend span {{ display:inline-block; margin-right:18px; font-size:.82rem; color:{MUTED}; }}
+.dot {{ display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; vertical-align:-1px; }}
+.note {{ border:1px solid {RULE}; border-radius:6px; padding:12px 16px; font-size:.9rem; color:{INK};
+         background:#fff; margin:6px 0 10px; }}
+.note b {{ font-weight:600; }}
+section[data-testid="stSidebar"] {{ border-right:1px solid {RULE}; }}
+section[data-testid="stSidebar"] h3 {{ font-size:.78rem; letter-spacing:.1em; text-transform:uppercase;
+         color:{MUTED}; font-weight:600; }}
+div[data-testid="stMetricLabel"] {{ color:{MUTED}; font-size:.78rem; }}
+div[data-testid="stMetricValue"] {{ font-size:1.35rem; font-weight:600; color:{INK}; }}
+button[data-baseweb="tab"] {{ font-weight:500; font-size:.92rem; }}
+.stCaption, [data-testid="stCaptionContainer"] {{ color:{MUTED}; }}
+a {{ color:#1f5fa8; text-underline-offset:3px; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -230,10 +264,9 @@ def show_identify(title, result):
 if "custom" not in st.session_state:
     st.session_state.custom = []
 
-LOGO = next((f for f in ("logo.jpg", "logo.jpeg", "logo.png") if os.path.exists(f)), None)
 if LOGO:
-    st.sidebar.image(LOGO, use_container_width=True)
-st.sidebar.markdown("### MISSION CONTROL")
+    st.sidebar.image(LOGO, width=150)
+st.sidebar.markdown("### Mission control")
 target = st.sidebar.radio("Mission target", ["Mars", "Moon"], horizontal=True)
 
 W = {}
@@ -310,7 +343,7 @@ def color(s):
 
 
 def mtext(s):
-    return "#ffffff" if (s >= 0.75 or s < 0.45) else NAVY
+    return "#ffffff" if s >= 0.6 else NAVY
 
 
 if sum(W.values()) == 0:
@@ -331,26 +364,17 @@ res["score_moon"] = [similarity(components(r, "Moon"), W if target == "Moon" els
 # ------------------------------------------------------------
 # 6. HEADER + KPIs
 # ------------------------------------------------------------
-hc1, hc2 = st.columns([1, 7])
-with hc1:
-    if LOGO:
-        st.image(LOGO, width=130)
-with hc2:
-    st.markdown(f"""
-    <p class="hero-title">ALTERGEA</p>
-    <p class="hero-sub">Earth analog site intelligence for permanent Moon and Mars bases ·
-    reading Earth to open the way to other worlds</p>
-    <span class="pill red">NASA SPACE APPS 2026 · PIURA</span>
-    <span class="pill">TARGET: {target.upper()}</span>
-    <span class="pill">{len(res)} SITES</span>
-    <span class="pill">NASA POWER · SRTM · MARS TREK · GIBS · INGEMMET</span>
-    """, unsafe_allow_html=True)
-st.markdown('<div class="bar"></div>', unsafe_allow_html=True)
+st.markdown(f"""
+<div class="mast"><p class="wordmark">ALTERGEA</p>
+<p class="desc">Earth analog site intelligence for permanent Moon and Mars bases</p></div>
+<p class="meta">NASA Space Apps 2026, Piura &nbsp;·&nbsp; Target <b>{target}</b> &nbsp;·&nbsp; <b>{len(res)}</b> sites
+&nbsp;·&nbsp; NASA POWER, SRTM, Mars Trek, GIBS, INGEMMET, MINAM</p>
+<div class="rule"></div>
+""", unsafe_allow_html=True)
 
 
-def kpi(label, value, sub, accent):
-    return (f'<div class="kpi" style="border-left-color:{accent}"><div class="l">{label}</div>'
-            f'<div class="v">{value}</div><div class="s">{sub}</div></div>')
+def kpi(label, value, sub, accent=None):
+    return f'<div class="stat"><div class="l">{label}</div><div class="v">{value}</div><div class="s">{sub}</div></div>'
 
 
 valid = res.dropna(subset=["score"])
@@ -359,11 +383,11 @@ if valid.empty:
     st.stop()
 best = valid.iloc[0]
 k1, k2, k3, k4 = st.columns(4)
-k1.markdown(kpi("Best analog", best.site, f"{best.country} · score {best.score}", SKY), unsafe_allow_html=True)
-k2.markdown(kpi("Mean score", f"{valid.score.mean():.2f}", f"across {len(valid)} sites with data", YEL), unsafe_allow_html=True)
-k3.markdown(kpi("Prime analogs", int((valid.score >= 0.75).sum()), "score ≥ 0.75", ORG), unsafe_allow_html=True)
+k1.markdown(kpi("Best analog", best.site, f"{best.country} · score {best.score}"), unsafe_allow_html=True)
+k2.markdown(kpi("Mean score", f"{valid.score.mean():.2f}", f"across {len(valid)} sites with data"), unsafe_allow_html=True)
+k3.markdown(kpi("Prime analogs", int((valid.score >= 0.75).sum()), "score ≥ 0.75"), unsafe_allow_html=True)
 k4.markdown(kpi("Driest site", valid.sort_values("precip_mm").iloc[0].site,
-                f"{valid.precip_mm.min():.0f} mm/yr", RED), unsafe_allow_html=True)
+                f"{valid.precip_mm.min():.0f} mm/yr"), unsafe_allow_html=True)
 if missing:
     with st.expander("Data notes"):
         st.write("Some NASA services did not answer for: " + "; ".join(missing) +
@@ -374,25 +398,111 @@ def esri_base(m, name="Satellite"):
     folium.TileLayer(tiles=ESRI_IMG, attr=ESRI_ATTR, name=name).add_to(m)
 
 
+# ---- Surface patches at matched scale: Earth (Esri imagery, z15 ≈ 4.8 m/px at 5° lat) vs Mars (HiRISE mosaic on
+# ---- Mars Trek, z13 ≈ 5.1 m/px). 3×3 tiles = 768 px ≈ 3.7–3.9 km on both bodies.
+MARS_REFS = {"Bagnold Dunes · Namib Dune (Gale)": NAMIB, "Bradbury Landing · plains (Gale)": BRADBURY}
+
+
+@st.cache_data(ttl=86400, show_spinner=False)
+def fetch_tile(url):
+    r = requests.get(url, timeout=30, headers=UA)
+    r.raise_for_status()
+    return r.content
+
+
+def mosaic(urls_3x3):
+    tiles = []
+    for row in urls_3x3:
+        imgs = []
+        for u in row:
+            try:
+                imgs.append(Image.open(io.BytesIO(fetch_tile(u))).convert("RGB"))
+            except Exception:
+                imgs.append(Image.new("RGB", (256, 256), (40, 40, 40)))
+        tiles.append(imgs)
+    out = Image.new("RGB", (768, 768))
+    for i, row in enumerate(tiles):
+        for j, im in enumerate(row):
+            out.paste(im.resize((256, 256)), (j * 256, i * 256))
+    return out
+
+
+def earth_patch(lat, lon, z=15):
+    n = 2 ** z
+    x = int((lon + 180) / 360 * n)
+    y = int((1 - np.log(np.tan(np.radians(lat)) + 1 / np.cos(np.radians(lat))) / np.pi) / 2 * n)
+    urls = [[ESRI_IMG.format(z=z, x=x + dx, y=y + dy) for dx in (-1, 0, 1)] for dy in (-1, 0, 1)]
+    return mosaic(urls), 156543.03 * np.cos(np.radians(lat)) / n
+
+
+def mars_patch(lat, lon, layer="curiosity_hirise_mosaic", z=13):
+    col = int((lon + 180) / 360 * 2 ** (z + 1))
+    row = int((90 - lat) / 180 * 2 ** z)
+    base = f"https://trek.nasa.gov/tiles/Mars/EQ/{layer}/1.0.0/default/default028mm/{z}"
+    urls = [[f"{base}/{row + dy}/{col + dx}.png" for dx in (-1, 0, 1)] for dy in (-1, 0, 1)]
+    return mosaic(urls), 180 / (256 * 2 ** z) * 59274.7      # metres per pixel (Mars: 1° ≈ 59.27 km)
+
+
+def texture_stats(img):
+    g = np.asarray(img.convert("L"), dtype=float) / 255.0
+    return {"brightness": float(g.mean()), "contrast": float(g.std()),
+            "texture": float(np.abs(ndimage.laplace(g)).mean())}
+
+
+def visual_similarity(a, b):
+    """0–100 closeness of two image patches on brightness, contrast and fine texture (log-ratio for the last two)."""
+    sa, sb = texture_stats(a), texture_stats(b)
+    s_bright = 100 * (1 - abs(sa["brightness"] - sb["brightness"]))
+    s_contr = 100 * np.exp(-abs(np.log((sa["contrast"] + 1e-4) / (sb["contrast"] + 1e-4))))
+    s_text = 100 * np.exp(-abs(np.log((sa["texture"] + 1e-4) / (sb["texture"] + 1e-4))))
+    return {"Brightness": s_bright, "Contrast": s_contr, "Fine texture": s_text}, sa, sb
+
+
 # ------------------------------------------------------------
 # 7. TABS
 # ------------------------------------------------------------
-t_map, t_rank, t_site, t_twin, t_peru, t_method = st.tabs(
-    ["Mission Map", "Ranking & Compare", "Site Explorer", "Mars twin: Médano Blanco ↔ Bagnold",
+t_map, t_rank, t_sim, t_site, t_twin, t_peru, t_method = st.tabs(
+    ["Mission Map", "Ranking", "Similarity explorer", "Site Explorer", "Mars twin: Médano Blanco ↔ Bagnold",
      "Peru geology (INGEMMET)", "Methodology"])
+
+# Reference conditions shown next to each Earth value in the similarity explorer (what the 0-1 closeness is measured against).
+REF = {
+    "Mars": {"aridity": "0 mm/yr, no rain", "thermal": "≈ 70 °C diurnal (REMS, Gale)", "albedo": f"{ALB['Mars']} (regional)",
+             "slope": f"≤ {slope_limit}° rover-safe", "altitude": "6–7 mbar surface pressure (altitude is the Earth proxy)",
+             "wind": "5–10 m/s typical, gusts > 15 (REMS)"},
+    "Moon": {"aridity": "no atmosphere", "thermal": "≈ 250 °C diurnal (Diviner, equator)", "albedo": f"{ALB['Moon']}",
+             "slope": f"≤ {slope_limit}° lander-safe", "altitude": "vacuum (altitude is the Earth proxy)",
+             "wind": "none: weight 0"},
+}
+FMT = {"aridity": lambda r: f"{r.precip_mm:.0f} mm/yr", "thermal": lambda r: f"{r.temp_range_c} °C",
+       "albedo": lambda r: f"{r.albedo}", "slope": lambda r: f"{r.slope_deg}°",
+       "altitude": lambda r: f"{r.altitude_m:.0f} m", "wind": lambda r: f"{r.wind10m_ms} m/s"}
 
 with t_map:
     VIEWS = {"World": ([15, -40], 2), "South America": ([-15, -70], 3), "Peru": ([-9.5, -75.5], 5)}
     loc, zoom = VIEWS[view]
-    topn = st.slider("Show top N sites", 3, len(valid), len(valid))
+    focus = st.session_state.get("focus_site")
+    if focus is not None and focus not in set(valid.site):
+        focus = st.session_state["focus_site"] = None
+    tc1, tc2 = st.columns([3, 1.3])
+    topn = tc1.slider("Show top N sites", 3, len(valid), len(valid))
+    opts = ["— none —"] + list(valid.site)
+    chosen = tc2.selectbox("Focus on a site (or click its marker)", opts,
+                           index=opts.index(focus) if focus in opts else 0, key="focus_select")
+    if (chosen if chosen != "— none —" else None) != focus:
+        st.session_state["focus_site"] = None if chosen == "— none —" else chosen
+        st.rerun()
+    if focus:
+        fr = valid[valid.site == focus].iloc[0]
+        loc, zoom = [fr.lat, fr.lon], 9
     m = folium.Map(location=loc, zoom_start=zoom, tiles=None)
     esri_base(m)
-    folium.TileLayer(tiles=GIBS, attr="NASA GIBS / MODIS Terra", name="NASA MODIS true colour (GIBS)",
-                     max_native_zoom=9, max_zoom=18).add_to(m)
     folium.TileLayer("OpenStreetMap", name="Street map").add_to(m)
     folium.TileLayer(
         tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
         attr="Esri", name="Topographic").add_to(m)
+    folium.TileLayer(tiles=GIBS, attr="NASA GIBS / MODIS Terra", name="NASA MODIS true colour (GIBS)",
+                     max_native_zoom=9, max_zoom=18, overlay=True, show=False, opacity=0.85).add_to(m)
     add_ingemmet_wms(m, show=False)
     for r in valid.head(topn).itertuples():
         size = 26 + int(r.score * 14)
@@ -415,11 +525,62 @@ with t_map:
                 f'<span><i class="dot" style="background:{SCALE[0]}"></i>Weak</span></div>', unsafe_allow_html=True)
     c1, c2 = st.columns([3, 1.3])
     with c1:
-        st_folium(m, height=560, use_container_width=True, returned_objects=[])
+        out = st_folium(m, height=560, use_container_width=True, returned_objects=["last_object_clicked"],
+                        key="mission_map")
     with c2:
         st.markdown(f"**Top sites for {target}**")
         st.dataframe(valid[["rank", "site", "score"]].head(topn), hide_index=True, height=520,
                      column_config={"score": st.column_config.ProgressColumn("Score", min_value=0, max_value=1, format="%.3f")})
+    clicked = (out or {}).get("last_object_clicked")
+    if clicked and "lat" in clicked:
+        dist = np.hypot(valid.lat - clicked["lat"], valid.lon - clicked["lng"])
+        if dist.min() < 0.5:
+            hit = valid.iloc[int(dist.argmin())].site
+            if hit != st.session_state.get("focus_site"):
+                st.session_state["focus_site"] = hit
+                st.rerun()
+
+    if focus:
+        fr = valid[valid.site == focus].iloc[0]
+        st.markdown(f"### Surface comparison · {focus} ↔ Mars")
+        st.caption("Both patches cover about 3.8 km at ~5 m per pixel: Esri imagery on Earth, the MRO HiRISE mosaic "
+                   "of the Curiosity roving site (NASA Mars Trek) on Mars. Slide to fade one surface into the other.")
+        sc1, sc2 = st.columns([1.4, 1])
+        ref_name = sc1.selectbox("Mars reference patch", list(MARS_REFS), key="mars_ref")
+        alpha = sc2.slider("Earth ⟷ Mars blend", 0.0, 1.0, 0.5, 0.05, key="blend")
+        with st.spinner("Fetching surface tiles…"):
+            e_img, e_res = earth_patch(fr.lat, fr.lon)
+            m_img, m_res = mars_patch(*MARS_REFS[ref_name])
+        blend = Image.blend(e_img, m_img, alpha)
+        p1, p2, p3 = st.columns(3)
+        p1.image(e_img, caption=f"{focus} · Esri imagery · {e_res:.1f} m/px", use_container_width=True)
+        p2.image(blend, caption=f"Blend · {int((1 - alpha) * 100)} % Earth / {int(alpha * 100)} % Mars",
+                 use_container_width=True)
+        p3.image(m_img, caption=f"{ref_name} · HiRISE (Mars Trek) · {m_res:.1f} m/px", use_container_width=True)
+        vs, sa, sb = visual_similarity(e_img, m_img)
+        comp_f = components(fr, target)
+        v1, v2 = st.columns(2)
+        with v1:
+            st.markdown("**Visual similarity of the two patches** (imagery statistics, not a physical measurement)")
+            vdf = pd.DataFrame({"Measure": list(vs), "Similarity %": [round(v, 1) for v in vs.values()],
+                                "Earth": [f"{sa['brightness']:.2f}", f"{sa['contrast']:.3f}", f"{sa['texture']:.4f}"],
+                                "Mars": [f"{sb['brightness']:.2f}", f"{sb['contrast']:.3f}", f"{sb['texture']:.4f}"]})
+            st.dataframe(vdf, hide_index=True, use_container_width=True,
+                         column_config={"Similarity %": st.column_config.ProgressColumn("Similarity %", min_value=0,
+                                                                                        max_value=100, format="%.0f %%")})
+            st.caption(f"Visual mean {np.mean(list(vs.values())):.0f} %. Brightness is the mean grey level, contrast its "
+                       "standard deviation, fine texture the mean absolute Laplacian; colour and illumination differ "
+                       "between the two sensors, so treat this as a qualitative cue.")
+        with v2:
+            st.markdown(f"**Environmental similarity to {target}, by variable**")
+            edf = pd.DataFrame({"Variable": [LABELS[k] for k in LABELS], "Earth value": [FMT[k](fr) for k in LABELS],
+                                "Similarity %": [None if np.isnan(comp_f[k]) else round(comp_f[k] * 100, 1) for k in LABELS],
+                                "Weight": [round(W[k], 2) for k in LABELS]})
+            st.dataframe(edf, hide_index=True, use_container_width=True,
+                         column_config={"Similarity %": st.column_config.ProgressColumn("Similarity %", min_value=0,
+                                                                                        max_value=100, format="%.0f %%")})
+            st.caption(f"Weighted overall: {fr.score * 100:.0f} % ({fr.tier}). Open the Similarity explorer tab to "
+                       "compare several sites variable by variable.")
 
 with t_rank:
     a, b = st.columns(2)
@@ -453,6 +614,78 @@ with t_rank:
     st.download_button("Download results (CSV)", res.to_csv(index=False).encode("utf-8"),
                        file_name=f"altergea_{target.lower()}_ranking.csv", mime="text/csv")
     st.dataframe(res.drop(columns=["lat", "lon"]), hide_index=True)
+
+with t_sim:
+    st.markdown(f"**How similar is each site to {target}, variable by variable?** Every variable is scored 0–100 % "
+                f"against the {target} reference; the overall figure is the weighted mean of the variables you keep on. "
+                "Weights come from the sidebar; switching a variable off here removes it from this comparison only.")
+    default_pick = [s for s in valid.site if s.startswith("Médano")] + [s for s in valid.site if not s.startswith("Médano")][:2]
+    pick_s = st.multiselect("Sites to compare (up to 5)", list(valid.site), default=default_pick[:3], max_selections=5,
+                            key="sim_sites")
+    vcols = st.columns(len(LABELS))
+    active = {k: vcols[i].checkbox(LABELS[k], value=W[k] > 0, key=f"act_{k}") for i, k in enumerate(LABELS)}
+    Wa = {k: (W[k] if active[k] else 0.0) for k in LABELS}
+    if not pick_s:
+        st.info("Pick at least one site.")
+    elif sum(Wa.values()) == 0:
+        st.info("Keep at least one variable with a non-zero weight on.")
+    else:
+        sel_rows = {s: valid[valid.site == s].iloc[0] for s in pick_s}
+        comps_sel = {s: components(r, target) for s, r in sel_rows.items()}
+        overall = {s: similarity(comps_sel[s], Wa) for s in pick_s}
+        ocols = st.columns(len(pick_s))
+        for col, s in zip(ocols, pick_s):
+            o = overall[s]
+            col.markdown(kpi(s, "n/a" if np.isnan(o) else f"{o * 100:.0f} %",
+                             f"{sel_rows[s].country} · {sum(1 for k in LABELS if Wa[k] > 0)} variables"), unsafe_allow_html=True)
+        long = []
+        for s in pick_s:
+            for k in LABELS:
+                if Wa[k] <= 0:
+                    continue
+                v = comps_sel[s][k]
+                long.append({"Variable": LABELS[k], "Site": s, "Earth value": FMT[k](sel_rows[s]),
+                             f"{target} reference": REF[target][k],
+                             "Similarity %": None if np.isnan(v) else round(v * 100, 1), "Weight": round(Wa[k], 2)})
+        long = pd.DataFrame(long)
+        b1, b2 = st.columns([1.3, 1])
+        with b1:
+            figv = px.bar(long, x="Variable", y="Similarity %", color="Site", barmode="group",
+                          color_discrete_sequence=BRAND, template="plotly_white", range_y=[0, 100])
+            figv.update_layout(height=360, margin=dict(l=0, r=0, t=10, b=0), xaxis_title=None,
+                               legend=dict(orientation="h", y=1.12, title=None), font=dict(family="IBM Plex Sans"))
+            st.plotly_chart(figv, use_container_width=True)
+        with b2:
+            figr = go.Figure()
+            cats_on = [LABELS[k] for k in LABELS if Wa[k] > 0]
+            for s in pick_s:
+                vals = [0 if np.isnan(comps_sel[s][k]) else comps_sel[s][k] * 100 for k in LABELS if Wa[k] > 0]
+                figr.add_trace(go.Scatterpolar(r=vals + vals[:1], theta=cats_on + cats_on[:1], fill="toself", name=s))
+            figr.update_layout(template="plotly_white", height=360, colorway=BRAND, showlegend=False,
+                               polar=dict(radialaxis=dict(range=[0, 100], ticksuffix=" %")),
+                               margin=dict(l=30, r=30, t=20, b=20), font=dict(family="IBM Plex Sans"))
+            st.plotly_chart(figr, use_container_width=True)
+        st.dataframe(long, hide_index=True, use_container_width=True,
+                     column_config={"Similarity %": st.column_config.ProgressColumn("Similarity %", min_value=0,
+                                                                                    max_value=100, format="%.0f %%")})
+        if len(pick_s) >= 2:
+            st.markdown("**Head to head**")
+            h1, h2 = st.columns(2)
+            a_site = h1.selectbox("Site A", pick_s, index=0, key="h2h_a")
+            b_site = h2.selectbox("Site B", pick_s, index=1, key="h2h_b")
+            if a_site != b_site:
+                diff = []
+                for k in LABELS:
+                    if Wa[k] <= 0:
+                        continue
+                    va, vb = comps_sel[a_site][k], comps_sel[b_site][k]
+                    d = (va - vb) * 100 if not (np.isnan(va) or np.isnan(vb)) else np.nan
+                    diff.append({"Variable": LABELS[k], f"{a_site}": FMT[k](sel_rows[a_site]), "A %": round(va * 100, 1),
+                                 f"{b_site}": FMT[k](sel_rows[b_site]), "B %": round(vb * 100, 1),
+                                 "Edge": "" if np.isnan(d) else (f"{a_site} +{d:.0f}" if d > 0 else f"{b_site} +{-d:.0f}")})
+                st.dataframe(pd.DataFrame(diff), hide_index=True, use_container_width=True)
+                oa, ob = overall[a_site], overall[b_site]
+                st.caption(f"Overall for {target}: {a_site} {oa * 100:.0f} % vs {b_site} {ob * 100:.0f} %.")
 
 with t_site:
     sel = st.selectbox("Select a site", list(valid.site))
@@ -488,8 +721,17 @@ with t_twin:
     st.markdown(
         "**Proposed analog: Médano Blanco (Sechura, Piura) ↔ Bagnold Dunes (Gale crater, Mars).** "
         "Both are *active* barchan dune fields shaped by steady wind. Bagnold was the first active dune field "
-        "studied in situ on another planet (Curiosity, 2015–2017). Médano Blanco is an operational training field "
-        "for rover mobility on loose sand, a documented mission risk (Spirit, 2009).")
+        "studied in situ on another planet (Curiosity, 2015–2017).")
+    q1, q2, q3 = st.columns(3)
+    q1.markdown("**What makes the analogy strong**  \nSame landform and process: active barchans and linear dunes "
+                "built by a persistent wind regime, loose sand that traps wheels, slipfaces and metre-scale ripples. "
+                "Measured migration on both bodies (MINAM, Sentinel-2; HiRISE).")
+    q2.markdown("**Where it fails**  \nComposition (quartz vs basalt–olivine), atmosphere (1 bar vs 6 mbar: Mars "
+                "sand moves rarely, ~10× slower), gravity, no vegetation on Mars. Médano Blanco is also a protected "
+                "tourism site with use restrictions.")
+    q3.markdown("**How it helps exploration**  \nA field for rover mobility and sand-trap recovery drills (the "
+                "Spirit failure mode), dune-crossing path planning, dust and bedform change-detection methods, "
+                "and for calibrating orbital measurements against ground truth, 50 km from Piura.")
     mb = res[res.site.str.startswith("Médano Blanco")]
     mb = mb.iloc[0] if not mb.empty else None
 
@@ -499,9 +741,9 @@ with t_twin:
         me = folium.Map(location=[MB_LAT, MB_LON], zoom_start=14, tiles=None)
         esri_base(me, "Satellite (Esri)")
         folium.TileLayer(tiles=GIBS, attr="NASA GIBS / MODIS Terra", name="NASA MODIS true colour (GIBS, 250 m)",
-                         max_native_zoom=9, max_zoom=18).add_to(me)
+                         max_native_zoom=9, max_zoom=18, overlay=True, show=False, opacity=0.85).add_to(me)
         add_ingemmet_wms(me, show=False)
-        folium.CircleMarker([MB_LAT, MB_LON], radius=8, color=RED, fill=True, fill_opacity=0.9,
+        folium.CircleMarker([MB_LAT, MB_LON], radius=8, color=NAVY, fill=True, fill_opacity=0.9,
                             tooltip="Médano Blanco (barchan, ~16.4 ha)").add_to(me)
         folium.LayerControl().add_to(me)
         st_folium(me, height=430, use_container_width=True, returned_objects=[], key="twin_earth")
@@ -514,30 +756,46 @@ with t_twin:
                              show=show, max_native_zoom=mz, max_zoom=18).add_to(mm)
         folium.CircleMarker(list(NAMIB), radius=8, color=RED, fill=True, fill_opacity=0.9,
                             tooltip="Namib Dune · Curiosity sol 1192").add_to(mm)
-        folium.CircleMarker(list(BRADBURY), radius=6, color=YEL, fill=True, fill_opacity=0.9,
+        folium.CircleMarker(list(BRADBURY), radius=6, color="#ffffff", fill=True, fill_opacity=0.9,
                             tooltip="Bradbury Landing · Curiosity, 2012").add_to(mm)
         folium.LayerControl().add_to(mm)
         st_folium(mm, height=430, use_container_width=True, returned_objects=[], key="twin_mars")
         st.caption("Toggle layers (top right): CTX mosaic of Gale, HiRISE mosaic of the Curiosity roving site, "
                    "HiRISE 1 m DEM. Zoom in on the dark band south-west of the marker to see the dunes.")
 
+    # Our own Sentinel-2 measurement (tools/sentinel_migration.py), if it has been run.
+    S2_JSON, S2_CSV, S2_IMG = "data/medano_blanco_migration.json", "data/medano_blanco_migration.csv", "data/sentinel"
+    s2 = s2_rows = None
+    if os.path.exists(S2_JSON) and os.path.exists(S2_CSV):
+        with open(S2_JSON, encoding="utf-8") as fh:
+            s2 = json.load(fh)
+        s2_rows = pd.read_csv(S2_CSV)
+        if "speed_m_per_yr" not in s2 or "shift_along_drift_m" not in s2_rows:
+            s2 = s2_rows = None      # output of an older version of the script: ignore
+
     st.markdown("**Dune migration: Earth vs Mars (measured, not modelled)**")
     g1, g2 = st.columns([1.2, 1])
     with g1:
-        mig = pd.DataFrame([
-            ("Médano Blanco · slipface 2006–2016", 4.0, "Earth"),
-            ("Médano Blanco · slipface 2016–2022", 6.0, "Earth"),
-            ("Médano Blanco · stoss side 2016–2022", 2.0, "Earth"),
-            ("Bagnold dunes (HiRISE)", 0.4, "Mars"),
-            ("Bagnold large ripples, upper bound (HiRISE)", 1.7, "Mars"),
-        ], columns=["measurement", "m_per_yr", "world"])
+        mig_rows = [
+            ("Médano Blanco, slipface 2006–16 · MINAM", 4.0, "Earth"),
+            ("Médano Blanco, slipface 2016–22 · MINAM", 6.0, "Earth"),
+            ("Bagnold dunes · HiRISE, Silvestro 2013", 0.4, "Mars"),
+            ("Bagnold large ripples, max · HiRISE", 1.7, "Mars"),
+        ]
+        if s2:
+            mig_rows.insert(2, (f"Médano Blanco, dune body {s2['first'][2:4]}–{s2['last'][2:4]} · Sentinel-2, ALTERGEA",
+                                s2["speed_m_per_yr"], "Earth"))
+        mig = pd.DataFrame(mig_rows, columns=["measurement", "m_per_yr", "world"])
         figm = px.bar(mig, x="m_per_yr", y="measurement", orientation="h", color="world",
-                      color_discrete_map={"Earth": SKY, "Mars": RED}, template="plotly_white", text="m_per_yr")
-        figm.update_layout(height=300, margin=dict(l=0, r=0, t=10, b=0), xaxis_title="Migration (m per Earth year)",
-                           yaxis_title=None, legend_title=None)
+                      color_discrete_map={"Earth": NAVY, "Mars": RED}, template="plotly_white", text="m_per_yr")
+        figm.update_traces(texttemplate="%{text:.1f}", textposition="outside", cliponaxis=False)
+        figm.update_layout(height=320, margin=dict(l=0, r=30, t=10, b=0), xaxis_title="Migration (m per Earth year)",
+                           xaxis_range=[0, float(mig.m_per_yr.max()) * 1.2], yaxis_title=None, legend_title=None,
+                           yaxis=dict(automargin=True, tickfont=dict(size=11)), font=dict(family="IBM Plex Sans"))
         st.plotly_chart(figm, use_container_width=True)
-        st.caption("Earth: MINAM / Expediciones al Desierto (2022), Google Earth 2006–2022. Mars: Silvestro et al. "
-                   "(2013, HiRISE) as summarised by Bridges et al. (2018); ripple range from Baker et al. (2018).")
+        st.caption("Earth: MINAM / Expediciones al Desierto (2022), Google Earth 2006–2022, and ALTERGEA's own "
+                   "Sentinel-2 measurement below. Mars: Silvestro et al. (2013, HiRISE) as summarised by Bridges "
+                   "et al. (2018); ripple range from Baker et al. (2018).")
     with g2:
         earth_alt = f"{mb.altitude_m:.0f} m (SRTM 30 m)" if mb is not None and not np.isnan(mb.altitude_m) else "n/a"
         earth_alb = f"{mb.albedo} (POWER, 50 km cell)" if mb is not None and not np.isnan(mb.albedo) else "n/a"
@@ -558,13 +816,58 @@ with t_twin:
         ], columns=["Feature", "Médano Blanco", "Bagnold / Namib Dune"])
         st.dataframe(cmp, hide_index=True, height=360)
 
-    st.warning(
-        "**Honest framing.** The analogy is morphological and process-based (barchans, steady wind, loose sand), "
-        "not mineralogical: Bagnold sand is basaltic and olivine-rich, Médano Blanco is light-toned. Gale is a rover "
-        "science site, so the pitch is *training field for mobility and operations in sand that any Mars base will "
-        "face*. Compare slope and roughness at matched resolution (HiRISE DTM resampled to 30 m vs Copernicus 30 m), "
-        "never MOLA 463 m vs SRTM 30 m. Next step: measure Médano Blanco migration from Sentinel-2 / Landsat "
-        "multi-year imagery instead of Google Earth.")
+    if s2 is not None:
+        st.markdown(f"**Sentinel-2 time series, {s2['first']} to {s2['last']}: {s2['n_scenes']} cloud-free scenes**")
+        s1, s2c = st.columns([1.2, 1])
+        with s1:
+            ts = s2_rows.copy()
+            ts["date"] = pd.to_datetime(ts["date"])
+            yrs = (ts["date"] - ts["date"].iloc[0]).dt.days / 365.25
+            figs = go.Figure()
+            figs.add_trace(go.Scatter(x=ts["date"], y=ts["shift_along_drift_m"], mode="markers",
+                                      name="Dune body (cross-correlation)", marker=dict(color=NAVY, size=7)))
+            figs.add_trace(go.Scatter(x=ts["date"], y=yrs * s2["speed_m_per_yr"], mode="lines",
+                                      name=f"Linear fit: {s2['speed_m_per_yr']} m/yr", line=dict(color=NAVY, width=1.5)))
+            if "leading_edge_m" in ts and ts["leading_edge_m"].notna().sum() >= 3:
+                figs.add_trace(go.Scatter(x=ts["date"], y=ts["leading_edge_m"], mode="markers",
+                                          name="Leading edge (outline)", marker=dict(color="#8fbfe3", size=6)))
+            figs.update_layout(template="plotly_white", height=300, margin=dict(l=0, r=0, t=10, b=0),
+                               yaxis_title="Displacement along drift direction (m)", xaxis_title=None,
+                               legend=dict(orientation="h", y=1.12), font=dict(family="IBM Plex Sans"))
+            st.plotly_chart(figs, use_container_width=True)
+            sig = s2.get("speed_sigma_m_per_yr")
+            st.caption(f"{s2['speed_m_per_yr']}{f' ± {sig}' if sig is not None else ''} m/yr towards "
+                       f"{s2['bearing_deg']}°, scatter about the fit {s2['fit_rms_m']} m, {s2['n_scenes']} scenes. "
+                       f"Copernicus Sentinel-2 L2A, 10 m, via Earth Search (AWS). Method: {s2['method']}.")
+            st.markdown(
+                '<div class="note"><b>Reading the two Earth figures.</b> Our Sentinel-2 series tracks the whole dune '
+                'body and finds it essentially stationary (below 1 m/yr, at the 10 m detection limit). The MINAM figure '
+                'of 4–6 m/yr describes the slipface edge and the arms, where sandboarding and buggy traffic '
+                'concentrate, measured on Google Earth imagery whose georeferencing can drift by metres between '
+                'dates. In analog terms this brings Médano Blanco closer to Bagnold: both fields are active at the '
+                'ripple and slipface scale while their dune bodies migrate well under 1 m/yr.</div>',
+                unsafe_allow_html=True)
+        with s2c:
+            imgs = [(d, os.path.join(S2_IMG, f"{d}.png")) for d in s2_rows["date"]]
+            imgs = [(d, p) for d, p in imgs if os.path.exists(p)]
+            if imgs:
+                pick_i = st.select_slider("Scene", options=[d for d, _ in imgs], value=imgs[-1][0])
+                st.image(dict(imgs)[pick_i], caption=f"Sentinel-2 true colour, {pick_i}, ~2 km across. Red outline: "
+                                                     "dune outline from the brightness threshold; the displacement is "
+                                                     "measured by cross-correlating the dune pixels, not from this outline.",
+                         use_container_width=True)
+            st.dataframe(s2_rows[["date", "shift_east_m", "shift_north_m", "ncc_peak", "area_ha"]],
+                         hide_index=True, height=220,
+                         column_config={"ncc_peak": st.column_config.NumberColumn("match", format="%.2f")})
+    else:
+        st.caption("Sentinel-2 measurement not available: run tools/sentinel_migration.py to generate it.")
+
+    st.markdown(
+        '<div class="note"><b>Honest framing.</b> The analogy is morphological and process-based (barchans, steady '
+        'wind, loose sand), not mineralogical: Bagnold sand is basaltic and olivine-rich, Médano Blanco is quartz sand. '
+        'Gale is a rover science site, so the pitch is <i>training field for mobility and operations in sand that any '
+        'Mars base will face</i>. Compare slope and roughness at matched resolution (HiRISE DTM resampled to 30 m vs '
+        'Copernicus 30 m), never MOLA 463 m vs SRTM 30 m.</div>', unsafe_allow_html=True)
 
 with t_peru:
     st.markdown("**Geological context from INGEMMET (Peru Geological Survey, GEOCATMIN)** · "
