@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ALTERGEA · Analog Site Intelligence</title>
 <meta name="description" content="Earth analog site intelligence for permanent Moon and Mars bases. NASA Space Apps 2026, Piura.">
 <link rel="icon" href="logo.jpg">
@@ -13,9 +13,13 @@
 </head>
 <body>
 <div class="shell">
-  <aside class="side">
-    <img class="logo" src="logo.jpg" alt="ALTERGEA" width="140">
-    <h3>Mission control</h3>
+  <aside class="side" id="side">
+    <div class="side-head">
+      <img class="logo" src="logo.jpg" alt="ALTERGEA" width="140">
+      <h3>Mission control</h3>
+      <button class="side-toggle" id="side_toggle" aria-expanded="false" aria-controls="side_body">Controls</button>
+    </div>
+    <div class="side-body" id="side_body">
     <label class="lbl">Mission target</label>
     <div class="seg" role="radiogroup" aria-label="Mission target">
       <button class="seg-btn is-on" data-target="Mars" role="radio" aria-checked="true">Mars</button>
@@ -51,6 +55,7 @@
 
     <p class="hint">Data: NASA POWER · SRTM/ASTER elevation · NASA Mars Trek (CTX, HiRISE, MOLA) · NASA GIBS (MODIS) ·
       Copernicus Sentinel-2 · INGEMMET GEOCATMIN · MINAM. Thresholds and weights are documented assumptions (see Methodology).</p>
+    </div>
   </aside>
 
   <main class="main">
@@ -83,8 +88,8 @@
       <div class="map-row">
         <div id="map" class="map"></div>
         <div class="top-list"><p class="h"><span id="top_title">Top sites for Mars</span></p><table id="top_table"></table></div>
+        <div id="focus" class="focus" hidden></div>
       </div>
-      <div id="focus" class="focus" hidden></div>
     </section>
 
     <!-- RANKING -->

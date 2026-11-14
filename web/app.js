@@ -122,7 +122,13 @@ function buildSidebar() {
   document.querySelectorAll('.seg-btn').forEach(b => b.addEventListener('click', () => setTarget(b.dataset.target, true)));
   $('#add_site').addEventListener('click', addCustomSite);
   $('#clear_sites').addEventListener('click', () => { S.custom = []; persistCustom(); update(); });
+  // small screens: the control panel collapses behind a "Controls" button
+  const tg = $('#side_toggle');
+  tg.addEventListener('click', () => { const open = !$('#side').classList.contains('is-open'); $('#side').classList.toggle('is-open', open); tg.setAttribute('aria-expanded', open); });
+  let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { Object.values(maps).forEach(m => m && m.invalidateSize && m.invalidateSize()); update(); }, 250); });
 }
+const isSmall = () => window.innerWidth < 1000;
+const H = (desktop, small) => isSmall() ? small : desktop;   // chart heights per layout
 function setTarget(t, resetW) {
   S.target = t;
   if (resetW) { S.W = { ...DEFAULT_W[t] }; S.P = { slope: 10, arid: 150, wind: 6 }; S.alb = { ...ALBEDO }; }
@@ -247,6 +253,7 @@ function setFocus(site) {
   $('#focus_sel').value = site || '';
   document.querySelectorAll('#top_table tr[data-s]').forEach(tr => tr.classList.toggle('is-on', tr.dataset.s === site));
   renderFocus();
+  if (site && isSmall()) setTimeout(() => $('#focus').scrollIntoView({ behavior: anim ? 'smooth' : 'auto', block: 'start' }), 400);
 }
 
 // ---------- surface comparison (focus) ----------
@@ -336,11 +343,11 @@ function renderRank() {
   Plotly.react('rank_bar', [{ type: 'bar', orientation: 'h', x: asc.map(r => r.score), y: asc.map(r => r.site),
     marker: { color: asc.map(r => r.score), colorscale: [[0, SCALE[0]], [.45, SCALE[1]], [.6, SCALE[2]], [1, SCALE[3]]], cmin: 0, cmax: 1 },
     hovertemplate: '%{y}: %{x:.3f}<extra></extra>' }],
-    { height: 500, margin: { l: 0, r: 10, t: 10, b: 30 }, font: FONT, xaxis: { range: [0, 1], title: 'score' }, yaxis: { automargin: true }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)' }, PL);
+    { height: H(500, 420), margin: { l: 0, r: 10, t: 10, b: 30 }, font: FONT, xaxis: { range: [0, 1], title: 'score' }, yaxis: { automargin: true }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)' }, PL);
   Plotly.react('rank_scatter', [{ type: 'scatter', mode: 'markers+text', x: v.map(r => r.score_moon), y: v.map(r => r.score_mars), text: v.map(r => r.site),
     textposition: 'top center', textfont: { size: 10, color: MUTED }, marker: { size: 12, color: v.map(r => r.score), colorscale: [[0, SCALE[0]], [.45, SCALE[1]], [.6, SCALE[2]], [1, SCALE[3]]], cmin: 0, cmax: 1 },
     hovertemplate: '%{text}<br>Moon %{x:.2f} · Mars %{y:.2f}<extra></extra>' }],
-    { height: 500, margin: { l: 50, r: 10, t: 10, b: 40 }, font: FONT, xaxis: { title: 'Moon similarity' }, yaxis: { title: 'Mars similarity' }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)' }, PL);
+    { height: H(500, 380), margin: { l: 50, r: 10, t: 10, b: 40 }, font: FONT, xaxis: { title: 'Moon similarity' }, yaxis: { title: 'Mars similarity' }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)' }, PL);
   const cols = ['rank', 'site', 'country', 'type', 'score', 'tier', 'precip_mm', 'temp_range_c', 'albedo', 'wind10m_ms', 'wind10m_max_ms', 'altitude_m', 'slope_deg', 'roughness_m', 'score_mars', 'score_moon'];
   $('#rank_table').innerHTML = '<tr>' + cols.map(c => `<th>${c}</th>`).join('') + '</tr>' +
     v.map(r => '<tr>' + cols.map(c => `<td>${isNum(r[c]) ? r[c] : (r[c] ?? '')}</td>`).join('') + '</tr>').join('');
@@ -373,9 +380,9 @@ function renderExplorer() {
   $('#ex_overall').innerHTML = rows.map((r, i) => stat(r.site, isNaN(overall[i]) ? 'n/a' : `${Math.round(overall[i] * 100)} %`, `${r.country} · ${on.length} variables`)).join('');
   Plotly.react('ex_bar', rows.map((r, i) => ({ type: 'bar', name: r.site, x: on.map(k => LABELS[k]), y: on.map(k => isNaN(r.comps[k]) ? 0 : r.comps[k] * 100), marker: { color: BRAND[i % BRAND.length] },
     hovertemplate: '%{x}: %{y:.0f} %<extra>' + r.site + '</extra>' })),
-    { barmode: 'group', height: 360, margin: { l: 40, r: 0, t: 10, b: 60 }, font: FONT, yaxis: { range: [0, 100], title: 'Similarity %' }, legend: { orientation: 'h', y: 1.12 }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)' }, PL);
+    { barmode: 'group', height: H(360, 320), margin: { l: 40, r: 0, t: 10, b: 60 }, font: FONT, yaxis: { range: [0, 100], title: 'Similarity %' }, legend: { orientation: 'h', y: 1.18 }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)' }, PL);
   Plotly.react('ex_radar', rows.map((r, i) => { const vals = on.map(k => isNaN(r.comps[k]) ? 0 : r.comps[k] * 100); return { type: 'scatterpolar', name: r.site, r: [...vals, vals[0]], theta: [...on.map(k => LABELS[k]), LABELS[on[0]]], fill: 'toself', line: { color: BRAND[i % BRAND.length] }, fillcolor: BRAND[i % BRAND.length] + '33' }; }),
-    { height: 360, margin: { l: 40, r: 40, t: 20, b: 20 }, font: FONT, showlegend: false, polar: { radialaxis: { range: [0, 100], ticksuffix: ' %' } }, paper_bgcolor: 'rgba(0,0,0,0)' }, PL);
+    { height: H(360, 320), margin: { l: 40, r: 40, t: 20, b: 20 }, font: FONT, showlegend: false, polar: { radialaxis: { range: [0, 100], ticksuffix: ' %' } }, paper_bgcolor: 'rgba(0,0,0,0)' }, PL);
   $('#ex_table').innerHTML = `<tr><th>Variable</th><th>Site</th><th>Earth value</th><th>${S.target} reference</th><th>Similarity %</th><th>Weight</th></tr>` +
     rows.flatMap(r => on.map(k => `<tr><td>${LABELS[k]}</td><td>${r.site}</td><td>${FMT[k](r)}</td><td>${fmtRef(k)}</td><td>${pct(r.comps[k])}</td><td>${Wa[k].toFixed(2)}</td></tr>`)).join('');
   if (rows.length >= 2) {
@@ -418,7 +425,7 @@ function renderTwinData() {
   mig.push(['Bagnold dunes · HiRISE, Silvestro 2013', 0.4, 'Mars'], ['Bagnold large ripples, max · HiRISE', 1.7, 'Mars']);
   Plotly.react('mig_bar', ['Earth', 'Mars'].map(w => ({ type: 'bar', orientation: 'h', name: w, x: mig.filter(m => m[2] === w).map(m => m[1]), y: mig.filter(m => m[2] === w).map(m => m[0]),
     marker: { color: w === 'Earth' ? NAVY : RED }, text: mig.filter(m => m[2] === w).map(m => m[1].toFixed(1)), textposition: 'outside', cliponaxis: false, hovertemplate: '%{y}: %{x} m/yr<extra></extra>' })),
-    { height: 320, margin: { l: 0, r: 30, t: 10, b: 40 }, font: FONT, xaxis: { title: 'Migration (m per Earth year)', range: [0, 7.5] }, yaxis: { automargin: true, tickfont: { size: 11 }, categoryorder: 'array', categoryarray: mig.map(m => m[0]).reverse() }, legend: { orientation: 'h', y: 1.1 }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)' }, PL);
+    { height: H(320, 340), margin: { l: 0, r: 30, t: 10, b: 40 }, font: FONT, xaxis: { title: 'Migration (m per Earth year)', range: [0, 7.5] }, yaxis: { automargin: true, tickfont: { size: isSmall() ? 10 : 11 }, categoryorder: 'array', categoryarray: mig.map(m => m[0]).reverse() }, legend: { orientation: 'h', y: 1.1 }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)' }, PL);
   const ev = (k, f) => mb && isNum(mb[k]) ? f(mb[k]) : 'n/a';
   const cmp = [['Dune type', 'Barchan, active; ~16.4 ha', 'Barchans + linear dunes, active'],
     ['Sand composition', "Quartz sand, light-toned: INGEMMET unit Q-eo 'Depósito eólico'", 'Dark basaltic, olivine-bearing (ChemCam/APXS)'],
