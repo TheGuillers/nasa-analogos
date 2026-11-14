@@ -80,12 +80,42 @@ Limitaciones: 10 m por píxel limita la detección a desplazamientos de ~2 m acu
 la humedad del suelo y la estación (por eso el área oscila entre 10 y 21 ha), aunque la correlación enmascarada es
 robusta a ello; un análisis con PlanetScope (3 m) o con ortofotos de dron resolvería el movimiento del sotavento.
 
-## Cómo ejecutar
+## Dos versiones de la app
+
+| | Streamlit ([app.py](app.py)) | Web estática ([web/](web/)) |
+|---|---|---|
+| Para | Trabajo local y Streamlit Community Cloud | Vercel, Netlify, GitHub Pages o cualquier hosting estático |
+| Datos de sitios | Descargados en vivo de NASA POWER y OpenTopoData | Precalculados en `web/data/sites.json` con `tools/export_sites.py`; los sitios que añade el usuario sí se consultan en vivo desde el navegador |
+| Modelo | Python | JavaScript, mismas fórmulas y pesos |
+| Mapas de Marte, GIBS, INGEMMET | Sí | Sí, directo desde el navegador (INGEMMET por JSONP) |
+| Fundido Tierra/Marte | Sí, en el servidor | Sí, en `<canvas>` |
+
+### Desplegar la web en Vercel
+
+El repo ya incluye [vercel.json](vercel.json), que publica la carpeta `web/` tal cual, sin build.
+
+1. En [vercel.com/new](https://vercel.com/new) importa el repositorio `TheGuillers/nasa-analogos`.
+2. Deja el *Framework Preset* en "Other"; Vercel lee `vercel.json` y usa `web` como directorio de salida. Pulsa **Deploy**.
+3. Cada push a `main` redespliega. Si cambian los datos, vuelve a ejecutar `tools/export_sites.py` antes del push.
+
+Para probarla en local:
+
+```bash
+.venv/Scripts/python.exe -m http.server 8080 --directory web
+```
+
+## Cómo ejecutar la versión Streamlit
 
 ```bash
 python -m venv .venv
 .venv/Scripts/python.exe -m pip install -r requirements.txt
 .venv/Scripts/python.exe -m streamlit run app.py
+```
+
+Regenerar los datos de la web estática (unos 70 s, consulta NASA POWER y OpenTopoData):
+
+```bash
+.venv/Scripts/python.exe tools/export_sites.py
 ```
 
 La medición Sentinel-2 (opcional, necesita `rasterio` y `scipy`):

@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ALTERGEA · Analog Site Intelligence</title>
+<meta name="description" content="Earth analog site intelligence for permanent Moon and Mars bases. NASA Space Apps 2026, Piura.">
+<link rel="icon" href="logo.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="side">
+    <img class="logo" src="logo.jpg" alt="ALTERGEA" width="140">
+    <h3>Mission control</h3>
+    <label class="lbl">Mission target</label>
+    <div class="seg" role="radiogroup" aria-label="Mission target">
+      <button class="seg-btn is-on" data-target="Mars" role="radio" aria-checked="true">Mars</button>
+      <button class="seg-btn" data-target="Moon" role="radio" aria-checked="false">Moon</button>
+    </div>
+
+    <details class="box">
+      <summary>Model parameters</summary>
+      <div id="weights"></div>
+      <label class="lbl">Operational slope limit <output id="o_slope">10</output>°</label>
+      <input type="range" id="p_slope" min="2" max="25" step="1" value="10">
+      <label class="lbl">Aridity scale <output id="o_arid">150</output> mm/yr</label>
+      <input type="range" id="p_arid" min="50" max="500" step="10" value="150">
+      <label class="lbl">Sand-transport wind at 10 m <output id="o_wind">6.0</output> m/s</label>
+      <input type="range" id="p_wind" min="3" max="10" step="0.5" value="6">
+      <label class="lbl">Target albedo <output id="o_alb">0.25</output></label>
+      <input type="range" id="p_alb" min="0.05" max="0.40" step="0.01" value="0.25">
+      <button class="btn-link" id="reset_params">Reset to defaults</button>
+    </details>
+
+    <details class="box">
+      <summary>Analyze your own site</summary>
+      <label class="lbl" for="c_name">Name</label>
+      <input type="text" id="c_name" value="My site">
+      <label class="lbl" for="c_lat">Latitude</label>
+      <input type="number" id="c_lat" step="0.0001" value="-5.0" min="-90" max="90">
+      <label class="lbl" for="c_lon">Longitude</label>
+      <input type="number" id="c_lon" step="0.0001" value="-80.0" min="-180" max="180">
+      <button class="btn" id="add_site">Fetch NASA data and add</button>
+      <button class="btn-link" id="clear_sites">Clear custom sites</button>
+      <p class="hint" id="add_status"></p>
+    </details>
+
+    <p class="hint">Data: NASA POWER · SRTM/ASTER elevation · NASA Mars Trek (CTX, HiRISE, MOLA) · NASA GIBS (MODIS) ·
+      Copernicus Sentinel-2 · INGEMMET GEOCATMIN · MINAM. Thresholds and weights are documented assumptions (see Methodology).</p>
+  </aside>
+
+  <main class="main">
+    <div class="mast"><p class="wordmark">ALTERGEA</p>
+      <p class="desc">Earth analog site intelligence for permanent Moon and Mars bases</p></div>
+    <p class="meta">NASA Space Apps 2026, Piura &nbsp;·&nbsp; Target <b id="m_target">Mars</b> &nbsp;·&nbsp;
+      <b id="m_n">14</b> sites &nbsp;·&nbsp; NASA POWER, SRTM, Mars Trek, GIBS, Sentinel-2, INGEMMET, MINAM</p>
+    <div class="rule"></div>
+
+    <div class="stats" id="stats"></div>
+
+    <nav class="tabs" role="tablist">
+      <button class="tab is-on" data-tab="map" role="tab">Mission Map</button>
+      <button class="tab" data-tab="rank" role="tab">Ranking</button>
+      <button class="tab" data-tab="explore" role="tab">Similarity explorer</button>
+      <button class="tab" data-tab="twin" role="tab">Mars twin: Médano Blanco ↔ Bagnold</button>
+      <button class="tab" data-tab="peru" role="tab">Peru geology (INGEMMET)</button>
+      <button class="tab" data-tab="method" role="tab">Methodology</button>
+    </nav>
+
+    <!-- MAP -->
+    <section class="panel is-on" id="tab-map" role="tabpanel">
+      <div class="row">
+        <label class="lbl grow">Show top N sites <output id="o_topn">14</output></label>
+        <input type="range" id="topn" min="3" max="14" value="14" class="grow">
+        <label class="lbl" for="focus_sel">Focus on a site (or click its marker)</label>
+        <select id="focus_sel"><option value="">— none —</option></select>
+      </div>
+      <div class="legend" id="legend"></div>
+      <div class="map-row">
+        <div id="map" class="map"></div>
+        <div class="top-list"><p class="h"><span id="top_title">Top sites for Mars</span></p><table id="top_table"></table></div>
+      </div>
+      <div id="focus" class="focus" hidden></div>
+    </section>
+
+    <!-- RANKING -->
+    <section class="panel" id="tab-rank" role="tabpanel">
+      <div class="two">
+        <div><p class="h" id="rank_title">Similarity to Mars</p><div id="rank_bar"></div></div>
+        <div><p class="h">Dual-target matrix: which sites serve both worlds?</p><div id="rank_scatter"></div></div>
+      </div>
+      <p class="h">All variables</p>
+      <div class="tbl-wrap"><table id="rank_table" class="data"></table></div>
+      <button class="btn-link" id="dl_csv">Download results (CSV)</button>
+    </section>
+
+    <!-- EXPLORER -->
+    <section class="panel" id="tab-explore" role="tabpanel">
+      <p id="ex_intro"></p>
+      <div class="row wrap">
+        <div class="chips" id="ex_sites"></div>
+      </div>
+      <div class="row wrap" id="ex_vars"></div>
+      <div class="stats" id="ex_overall"></div>
+      <div class="two">
+        <div id="ex_bar"></div>
+        <div id="ex_radar"></div>
+      </div>
+      <div class="tbl-wrap"><table id="ex_table" class="data"></table></div>
+      <div id="ex_h2h"></div>
+    </section>
+
+    <!-- TWIN -->
+    <section class="panel" id="tab-twin" role="tabpanel">
+      <p><b>Proposed analog: Médano Blanco (Sechura, Piura) ↔ Bagnold Dunes (Gale crater, Mars).</b> Both are
+        <i>active</i> barchan dune fields shaped by steady wind. Bagnold was the first active dune field studied in situ
+        on another planet (Curiosity, 2015–2017).</p>
+      <div class="three">
+        <div><p class="h">What makes the analogy strong</p><p>Same landform and process: active barchans and linear
+          dunes built by a persistent wind regime, loose sand that traps wheels, slipfaces and metre-scale ripples.
+          Measured migration on both bodies (Sentinel-2, MINAM; HiRISE).</p></div>
+        <div><p class="h">Where it fails</p><p>Composition (quartz vs basalt–olivine), atmosphere (1 bar vs 6 mbar:
+          Mars sand moves rarely), gravity, no vegetation on Mars. Médano Blanco is a protected tourism site with use
+          restrictions.</p></div>
+        <div><p class="h">How it helps exploration</p><p>A field for rover mobility and sand-trap recovery drills (the
+          Spirit failure mode), dune-crossing path planning, dust and bedform change-detection methods, and for
+          calibrating orbital measurements against ground truth, 50 km from Piura.</p></div>
+      </div>
+      <div class="two">
+        <div><p class="h">Earth · Médano Blanco · −5.554, −80.757 · Esri imagery, NASA GIBS, INGEMMET</p><div id="map_earth" class="map sm"></div></div>
+        <div><p class="h">Mars · Bagnold Dunes, Gale · Namib Dune −4.680, 137.367 · NASA Mars Trek tiles</p><div id="map_mars" class="map sm"></div>
+          <p class="hint">Toggle layers (top right): CTX mosaic of Gale, HiRISE mosaic of the Curiosity roving site,
+            HiRISE 1 m DEM. Zoom in on the dark band south-west of the marker to see the dunes.</p></div>
+      </div>
+      <p class="h">Dune migration: Earth vs Mars (measured, not modelled)</p>
+      <div class="two">
+        <div><div id="mig_bar"></div>
+          <p class="hint">Earth: MINAM / Expediciones al Desierto (2022), Google Earth 2006–2022, and ALTERGEA's own
+            Sentinel-2 measurement. Mars: Silvestro et al. (2013, HiRISE) as summarised by Bridges et al. (2018);
+            ripple range from Baker et al. (2018).</p></div>
+        <div class="tbl-wrap"><table id="cmp_table" class="data"></table></div>
+      </div>
+      <div id="s2_block"></div>
+      <div class="note"><b>Honest framing.</b> The analogy is morphological and process-based (barchans, steady wind,
+        loose sand), not mineralogical: Bagnold sand is basaltic and olivine-rich, Médano Blanco is quartz sand
+        (INGEMMET unit Q-eo). Gale is a rover science site, so the pitch is <i>training field for mobility and
+        operations in sand that any Mars base will face</i>. Compare slope and roughness at matched resolution
+        (HiRISE DTM resampled to 30 m vs Copernicus 30 m), never MOLA 463 m vs SRTM 30 m.</div>
+    </section>
+
+    <!-- PERU -->
+    <section class="panel" id="tab-peru" role="tabpanel">
+      <p><b>Geological context from INGEMMET (Peru Geological Survey, GEOCATMIN)</b> · complements the NASA-based
+        score with 1:100k geology and geomorphology.</p>
+      <div class="row"><label class="lbl" for="peru_sel">Peruvian site</label><select id="peru_sel"></select>
+        <a class="btn-link" href="https://geocatmin.ingemmet.gob.pe" target="_blank" rel="noopener">Open GEOCATMIN viewer</a></div>
+      <div class="two"><div id="map_peru" class="map"></div><div id="peru_info"></div></div>
+    </section>
+
+    <!-- METHOD -->
+    <section class="panel" id="tab-method" role="tabpanel">
+      <h3>What ALTERGEA does</h3>
+      <p>It ranks Earth locations by how closely their environment resembles the conditions expected at permanent Moon
+        and Mars base sites, to help choose training fields on Earth. The flagship candidate is the <b>Médano Blanco dune
+        field (Sechura, Piura)</b> as an analog of the <b>Bagnold Dunes (Gale crater)</b>.</p>
+      <h3>Data used</h3>
+      <ul>
+        <li><b>NASA POWER</b>: precipitation (<code>PRECTOTCORR</code>), daily temperature range (<code>T2M_RANGE</code>),
+          surface albedo (<code>ALLSKY_SRF_ALB</code>) and 10 m wind, mean and max (<code>WS10M</code>, <code>WS10M_MAX</code>),
+          climatological means. Precomputed for the 14 base sites; fetched live for sites you add.</li>
+        <li><b>SRTM</b> (NASA/NGA) elevation, <b>ASTER GDEM</b> (NASA/METI) fallback for polar sites, via OpenTopoData:
+          altitude and mean slope over a ~4 km window (5×5 grid, ~1 km spacing).</li>
+        <li><b>NASA Mars Trek</b> WMTS tiles: Viking MDIM 2.1, MOLA colour hillshade (463 m), MRO CTX Gale mosaic,
+          MRO HiRISE Curiosity roving-site mosaic, HiRISE 1 m DEM of Gale.</li>
+        <li><b>NASA GIBS / Worldview</b>: MODIS Terra true-colour tiles as an Earth overlay.</li>
+        <li><b>Copernicus Sentinel-2 L2A</b> (Earth Search, AWS): 43 cloud-free scenes 2019–2026 to measure the dune's
+          migration by masked cross-correlation (see the Mars twin tab).</li>
+        <li><b>INGEMMET GEOCATMIN</b>: integrated 1:100k geology and geomorphology, as WMS overlays and point queries.</li>
+        <li><b>MINAM / SINIA</b> (2022): Médano Blanco diagnostic: dune type, area, migration 2006–2022, management.</li>
+      </ul>
+      <h3>Similarity model</h3>
+      <p id="method_model"></p>
+      <h3>Limitations</h3>
+      <ul>
+        <li>NASA POWER cells are ~50 km: values describe regional climate, not an exact point.</li>
+        <li>Slope is a regional mean from ~1 km spacing, not metre-scale terrain. Earth–Mars slope or roughness
+          comparisons must use matched resolution.</li>
+        <li>The Médano Blanco ↔ Bagnold analogy is morphological and process-based, not mineralogical.</li>
+        <li>Thresholds and weights are documented assumptions. Next step: calibrate with Mars (MOLA, MEDA/REMS) and Moon
+          (LOLA, Diviner) reference sites, and add INGEMMET lithology to the score.</li>
+      </ul>
+      <h3>Use of AI</h3>
+      <p>Claude (Anthropic) was used as a coding assistant to write and debug the code. The idea, site selection, model
+        design and interpretation were done by the team.</p>
+      <h3>References</h3>
+      <ul class="refs">
+        <li>NASA POWER Project, <a href="https://power.larc.nasa.gov">power.larc.nasa.gov</a> · NASA Mars Trek,
+          <a href="https://trek.nasa.gov/mars">trek.nasa.gov/mars</a> · NASA GIBS, <a href="https://gibs.earthdata.nasa.gov">gibs.earthdata.nasa.gov</a></li>
+        <li>SRTM (NASA/NGA) and ASTER GDEM (NASA/METI), served by <a href="https://www.opentopodata.org">OpenTopoData</a></li>
+        <li>Earth Search STAC (Element 84), <a href="https://earth-search.aws.element84.com/v1">earth-search.aws.element84.com</a></li>
+        <li>INGEMMET, GEOCATMIN: <a href="https://geocatmin.ingemmet.gob.pe">geocatmin.ingemmet.gob.pe</a></li>
+        <li>MINAM / SINIA, Diagnóstico y microzonificación del ámbito de uso turístico de la duna Médano Blanco (2022),
+          <a href="https://sinia.minam.gob.pe/documentos/diagnostico-microzonificacion-ambito-uso-turistico-duna-medano">sinia.minam.gob.pe</a></li>
+        <li>Bridges, N. T. et al. (2018). The MSL Bagnold Dunes Campaign, Phase I. <i>JGR Planets</i>, doi:10.1002/2017JE005401</li>
+        <li>Silvestro, S. et al. (2013). Pervasive aeolian activity along rover Curiosity's traverse in Gale Crater. <i>Geology</i> 41, 483–486</li>
+        <li>Baker, M. M. et al. (2018). The Bagnold Dunes in southern summer. <i>GRL</i>, doi:10.1029/2018GL079040</li>
+        <li>Maps: Leaflet; imagery: Esri, Maxar, Earthstar Geographics; OpenStreetMap contributors; charts: Plotly.</li>
+      </ul>
+    </section>
+  </main>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+<script src="app.js"></script>
+</body>
+</html>
