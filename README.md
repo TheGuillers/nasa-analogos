@@ -17,18 +17,19 @@ exploración en Marte, usando datos abiertos de la NASA, explicando qué hace s�
    las **dunas Bagnold del cráter Gale**, estudiadas in situ por el rover Curiosity (2015–2017). La app muestra ambos
    lados en mapas gemelos: Sentinel-2, Esri y MODIS (NASA GIBS) en la Tierra; mosaicos CTX y HiRISE y el DEM HiRISE de
    1 m de NASA Mars Trek en Marte.
-3. **Una medición propia de la migración de la duna** con imágenes Sentinel-2 (2017–2026), comparada con la cifra del
-   MINAM (Google Earth, 2006–2022) y con la migración de Bagnold medida con HiRISE.
+3. **Una medición propia de la migración de la duna** con imágenes Sentinel-2 (2018–2026) tomadas de Microsoft
+   Planetary Computer, comparada con la cifra del MINAM (Google Earth, 2006–2022) y con la migración de Bagnold medida
+   con HiRISE.
 
 ## Médano Blanco ↔ Bagnold
 
 | | Médano Blanco (Sechura) | Bagnold / duna Namib (Gale) |
 |---|---|---|
 | Tipo de duna | Barján activo, ~16,4 ha (MINAM 2022) | Barjanes y dunas lineales activas (Bridges et al. 2018) |
-| Migración medida | Cuerpo de la duna 0,3 ± 0,1 m/año (Sentinel-2 2019–2026, ALTERGEA); sotavento 4–6 m/año según MINAM (Google Earth 2006–2022) | ~0,4 m/año terrestre (Silvestro et al. 2013, HiRISE); ondulaciones hasta 1,7 m/año |
+| Migración medida | Cuerpo de la duna < 1 m/año, 0,9 ± 0,1 en la corrida actual (Sentinel-2 2018–2026 vía Planetary Computer, ALTERGEA); sotavento 4–6 m/año según MINAM (Google Earth 2006–2022) | ~0,4 m/año terrestre (Silvestro et al. 2013, HiRISE); ondulaciones hasta 1,7 m/año |
 | Composición | Arena cuarzosa clara, unidad INGEMMET Q-eo "Depósito eólico" | Arena basáltica oscura con olivino (ChemCam, APXS) |
 | Posición | −5,554, −80,757 (UTM 17M 526906 E / 9386090 S) | Namib: −4,680, 137,367 (rover, sol 1192) |
-| Topografía | SRTM / Copernicus 30 m | DTM HiRISE 1 m (Gale_DEM_SMG_1m); MOLA 463 m es demasiado grueso |
+| Topografía | Copernicus DEM GLO-30 vía Planetary Computer (pendiente y rugosidad a 30 m); SRTM 30 m | DTM HiRISE 1 m (Gale_DEM_SMG_1m); MOLA 463 m es demasiado grueso |
 
 **Qué hace sólida la analogía.** La misma forma y el mismo proceso: barjanes activos modelados por un viento
 persistente, arena suelta que atrapa ruedas, caras de deslizamiento y ondulaciones métricas. En los dos cuerpos la
@@ -48,10 +49,11 @@ de medidas orbitales contra verdad de terreno, a 50 km de Piura y con acceso e i
 | Fuente | Uso |
 |---|---|
 | NASA POWER | Clima climatológico por sitio: `PRECTOTCORR`, `T2M_RANGE`, `ALLSKY_SRF_ALB`, `WS10M`, `WS10M_MAX` |
-| SRTM (NASA/NGA), ASTER GDEM (NASA/METI) | Altitud y pendiente media (ventana de 5×5 puntos a 1 km), vía OpenTopoData |
+| Copernicus DEM GLO-30 (ESA) vía **Microsoft Planetary Computer** | Altitud, pendiente media a 30 m y rugosidad (desviación de la superficie sin tendencia) en una ventana de ~3 km. Es la pendiente que usa el modelo, a la resolución que el lado marciano (DTM HiRISE remuestreado a 30 m) puede igualar |
+| SRTM (NASA/NGA), ASTER GDEM (NASA/METI) | Altitud y pendiente regional (ventana de 5×5 puntos a 1 km), vía OpenTopoData; respaldo y fuente para sitios añadidos por el usuario en la web estática |
+| Copernicus Sentinel-2 L2A vía **Planetary Computer** (Earth Search en AWS como respaldo) | Serie 2017–2026 a 10 m para medir la migración de la duna |
 | NASA Mars Trek (WMTS) | Viking MDIM 2.1, MOLA 463 m, mosaico CTX de Gale, mosaico HiRISE de Curiosity, DEM HiRISE 1 m |
 | NASA GIBS / Worldview | MODIS Terra color verdadero como capa base terrestre |
-| Copernicus Sentinel-2 L2A (Earth Search, AWS) | Serie 2017–2026 a 10 m para medir la migración de la duna |
 | INGEMMET GEOCATMIN | Geología integrada 1:100k y geomorfología (WMS y consulta puntual) |
 | MINAM / SINIA (2022) | Diagnóstico y microzonificación de la duna Médano Blanco: tipo, área, migración, restricciones |
 
@@ -65,10 +67,12 @@ normalizada *enmascarada*, es decir, solo cuentan los píxeles de la duna, para 
 fija de alrededor no anclen la correlación. El pico se refina a subpíxel y la velocidad es la pendiente del ajuste
 lineal del desplazamiento frente al tiempo.
 
-**Resultado (43 escenas, 2019-03-31 a 2026-08-21).** El cuerpo de la duna se desplaza **0,3 ± 0,1 m/año** hacia el
-oeste-suroeste, con una dispersión de 1,9 m alrededor del ajuste: a la resolución de Sentinel-2 el barján es
-esencialmente estacionario, muy por debajo de los 4–6 m/año que el diagnóstico del MINAM atribuye al sotavento a partir
-de Google Earth (2006–2022). Las dos cifras no miden lo mismo: la del MINAM describe el borde de la cara de
+**Resultado (42 escenas de Planetary Computer, 2018-01-30 a 2026-08-21).** El cuerpo de la duna se desplaza
+**0,9 ± 0,1 m/año** hacia el oeste-noroeste, con una dispersión de 1,8 m alrededor del ajuste. Una corrida anterior con
+el catálogo Earth Search (43 escenas, referencia 2019-03-31) dio 0,3 ± 0,1 m/año: la cifra depende de la escena de
+referencia y de qué escenas pasan el filtro de nubes, así que el valor honesto es **menos de 1 m/año**. A la resolución
+de Sentinel-2 el barján es esencialmente estacionario, muy por debajo de los 4–6 m/año que el diagnóstico del MINAM
+atribuye al sotavento a partir de Google Earth (2006–2022). Las dos cifras no miden lo mismo: la del MINAM describe el borde de la cara de
 deslizamiento y los brazos, donde se concentra el sandboarding y el paso de tubulares, y además la georreferenciación
 de las imágenes históricas de Google Earth puede desplazarse varios metros entre fechas. Nuestra medida sigue la forma
 completa de la duna, que entre 2019 y 2026 apenas cambia de sitio. Esto encaja con la propia observación del MINAM
@@ -85,7 +89,7 @@ robusta a ello; un análisis con PlanetScope (3 m) o con ortofotos de dron resol
 | | Streamlit ([app.py](app.py)) | Web estática ([web/](web/)) |
 |---|---|---|
 | Para | Trabajo local y Streamlit Community Cloud | Vercel, Netlify, GitHub Pages o cualquier hosting estático |
-| Datos de sitios | Descargados en vivo de NASA POWER y OpenTopoData | Precalculados en `web/data/sites.json` con `tools/export_sites.py`; los sitios que añade el usuario sí se consultan en vivo desde el navegador |
+| Datos de sitios | Precalculados por defecto (`web/data/sites.json`); interruptor "Refresh live" para consultar NASA POWER, OpenTopoData y Planetary Computer en vivo | Precalculados en `web/data/sites.json` con `tools/export_sites.py`; los sitios que añade el usuario se consultan en vivo desde el navegador (POWER y SRTM) |
 | Modelo | Python | JavaScript, mismas fórmulas y pesos |
 | Mapas de Marte, GIBS, INGEMMET | Sí | Sí, directo desde el navegador (INGEMMET por JSONP) |
 | Fundido Tierra/Marte | Sí, en el servidor | Sí, en `<canvas>` |
@@ -137,4 +141,5 @@ de sitios, el diseño del modelo y la interpretación son del equipo.
 - Silvestro, S. et al. (2013). Pervasive aeolian activity along rover Curiosity's traverse in Gale Crater. *Geology* 41, 483–486.
 - Baker, M. M. et al. (2018). The Bagnold Dunes in southern summer. *GRL*. doi:10.1029/2018GL079040
 - NASA POWER https://power.larc.nasa.gov · NASA Mars Trek https://trek.nasa.gov/mars · NASA GIBS https://gibs.earthdata.nasa.gov
+- Microsoft Planetary Computer (Copernicus DEM GLO-30, Sentinel-2 L2A) https://planetarycomputer.microsoft.com
 - Earth Search STAC (Element 84) https://earth-search.aws.element84.com/v1 · INGEMMET https://geocatmin.ingemmet.gob.pe

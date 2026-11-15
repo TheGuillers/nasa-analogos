@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css?v=20261115">
 </head>
 <body>
 <div class="shell">
@@ -62,7 +62,7 @@
     <div class="mast"><p class="wordmark">ALTERGEA</p>
       <p class="desc">Earth analog site intelligence for permanent Moon and Mars bases</p></div>
     <p class="meta">NASA Space Apps 2026, Piura &nbsp;·&nbsp; Target <b id="m_target">Mars</b> &nbsp;·&nbsp;
-      <b id="m_n">14</b> sites &nbsp;·&nbsp; NASA POWER, SRTM, Mars Trek, GIBS, Sentinel-2, INGEMMET, MINAM</p>
+      <b id="m_n">14</b> sites &nbsp;·&nbsp; NASA POWER, SRTM, Planetary Computer (Copernicus DEM, Sentinel-2), Mars Trek, GIBS, INGEMMET, MINAM</p>
     <div class="rule"></div>
 
     <div class="stats" id="stats"></div>
@@ -177,13 +177,16 @@
         <li><b>NASA POWER</b>: precipitation (<code>PRECTOTCORR</code>), daily temperature range (<code>T2M_RANGE</code>),
           surface albedo (<code>ALLSKY_SRF_ALB</code>) and 10 m wind, mean and max (<code>WS10M</code>, <code>WS10M_MAX</code>),
           climatological means. Precomputed for the 14 base sites; fetched live for sites you add.</li>
+        <li><b>Copernicus DEM GLO-30</b> (ESA) via <b>Microsoft Planetary Computer</b> (STAC API with public signing, no
+          account): altitude, mean slope at 30 m and detrended roughness over a ~3 km window. This is the slope the model
+          uses, at the resolution the Mars side (HiRISE DTM resampled to 30 m) can match. Precomputed for the base sites.</li>
         <li><b>SRTM</b> (NASA/NGA) elevation, <b>ASTER GDEM</b> (NASA/METI) fallback for polar sites, via OpenTopoData:
-          altitude and mean slope over a ~4 km window (5×5 grid, ~1 km spacing).</li>
+          altitude and a regional slope over a ~4 km window (5×5 grid, ~1 km spacing); used for sites you add here.</li>
         <li><b>NASA Mars Trek</b> WMTS tiles: Viking MDIM 2.1, MOLA colour hillshade (463 m), MRO CTX Gale mosaic,
           MRO HiRISE Curiosity roving-site mosaic, HiRISE 1 m DEM of Gale.</li>
         <li><b>NASA GIBS / Worldview</b>: MODIS Terra true-colour tiles as an Earth overlay.</li>
-        <li><b>Copernicus Sentinel-2 L2A</b> (Earth Search, AWS): 43 cloud-free scenes 2019–2026 to measure the dune's
-          migration by masked cross-correlation (see the Mars twin tab).</li>
+        <li><b>Copernicus Sentinel-2 L2A</b> via Planetary Computer (Earth Search on AWS as fallback catalogue): cloud-free
+          scenes 2017–2026 to measure the dune's migration by masked cross-correlation (see the Mars twin tab).</li>
         <li><b>INGEMMET GEOCATMIN</b>: integrated 1:100k geology and geomorphology, as WMS overlays and point queries.</li>
         <li><b>MINAM / SINIA</b> (2022): Médano Blanco diagnostic: dune type, area, migration 2006–2022, management.</li>
       </ul>
@@ -205,6 +208,7 @@
       <ul class="refs">
         <li>NASA POWER Project, <a href="https://power.larc.nasa.gov">power.larc.nasa.gov</a> · NASA Mars Trek,
           <a href="https://trek.nasa.gov/mars">trek.nasa.gov/mars</a> · NASA GIBS, <a href="https://gibs.earthdata.nasa.gov">gibs.earthdata.nasa.gov</a></li>
+        <li>Microsoft Planetary Computer (Copernicus DEM GLO-30, Sentinel-2 L2A), <a href="https://planetarycomputer.microsoft.com">planetarycomputer.microsoft.com</a></li>
         <li>SRTM (NASA/NGA) and ASTER GDEM (NASA/METI), served by <a href="https://www.opentopodata.org">OpenTopoData</a></li>
         <li>Earth Search STAC (Element 84), <a href="https://earth-search.aws.element84.com/v1">earth-search.aws.element84.com</a></li>
         <li>INGEMMET, GEOCATMIN: <a href="https://geocatmin.ingemmet.gob.pe">geocatmin.ingemmet.gob.pe</a></li>
@@ -220,6 +224,6 @@
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
-<script src="app.js"></script>
+<script src="app.js?v=20261115"></script>
 </body>
 </html>

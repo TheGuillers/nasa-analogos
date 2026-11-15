@@ -1,6 +1,7 @@
 """Measure the migration of the Médano Blanco barchan (Sechura, Peru) from Sentinel-2 L2A imagery.
 
-Data: Copernicus Sentinel-2 L2A cloud-optimised GeoTIFFs on AWS (Earth Search STAC, Element 84), public, no login.
+Data: Copernicus Sentinel-2 L2A cloud-optimised GeoTIFFs from Microsoft Planetary Computer (STAC API + SAS signing,
+public, no account), with Earth Search (Element 84, AWS) as fallback catalogue.
 Method:
   1. Query every scene with < 4 % tile cloud cover since 2017 and keep those whose SCL mask shows no cloud or
      shadow inside a ~2 km window around the dune (up to MAX_SCENES, spread over time).
@@ -30,28 +31,52 @@ from rasterio.warp import transform, transform_bounds
 from rasterio.windows import from_bounds
 from scipy import ndimage, signal
 
-STAC = "https://earth-search.aws.element84.com/v1/search"
+PC_STAC = "https://planetarycomputer.microsoft.com/api/stac/v1/search"
+PC_TOKEN = "https://planetarycomputer.microsoft.com/api/sas/v1/token/sentinel-2-l2a"
+ES_STAC = "https://earth-search.aws.element84.com/v1/search"
 LAT, LON = -5.5565, -80.7567          # centre of the dune body (MINAM position is at its NW foot: -5.554, -80.757)
 HALF = 0.009                          # window half-size in degrees (~1 km)
 BBOX = [LON - HALF, LAT - HALF, LON + HALF, LAT + HALF]
 START = "2017-01-01"
 END = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-MAX_TILE_CLOUD, MAX_LOCAL_CLOUD, MAX_SCENES = 4.0, 0.01, 45
+MAX_TILE_CLOUD, MAX_LOCAL_CLOUD, MAX_SCENES = 6.0, 0.01, 45
+BANDS = {"blue": ("B02", "blue"), "green": ("B03", "green"), "red": ("B04", "red"), "scl": ("SCL", "scl")}  # (PC key, ES key)
 TEMPLATE_HALF, SEARCH = 40, 25        # template 80 px (800 m) box; search ±25 px (±250 m)
 OUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
 IMG_DIR = os.path.join(OUT_DIR, "sentinel")
 os.makedirs(IMG_DIR, exist_ok=True)
 ENV = dict(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR", AWS_NO_SIGN_REQUEST="YES",
-           CPL_VSIL_CURL_ALLOWED_EXTENSIONS=".tif", GDAL_HTTP_MULTIRANGE="YES", GDAL_HTTP_MAX_RETRY="3",
-           GDAL_HTTP_RETRY_DELAY="2")
+           GDAL_HTTP_MULTIRANGE="YES", GDAL_HTTP_MAX_RETRY="3", GDAL_HTTP_RETRY_DELAY="2")   # no extension filter: signed URLs carry a query string
 
 
 def search():
+    """Scenes from Planetary Computer (signed hrefs); Earth Search if PC is unreachable. One scene per date."""
     body = {"collections": ["sentinel-2-l2a"], "bbox": BBOX, "datetime": f"{START}T00:00:00Z/{END}T23:59:59Z",
             "query": {"eo:cloud_cover": {"lt": MAX_TILE_CLOUD}}, "limit": 500}
-    r = requests.post(STAC, json=body, timeout=90)
-    r.raise_for_status()
-    feats = sorted(r.json()["features"], key=lambda f: f["properties"]["datetime"])
+    try:
+        r = requests.post(PC_STAC, json=body, timeout=90)
+        r.raise_for_status()
+        feats = r.json()["features"]
+        token = requests.get(PC_TOKEN, timeout=30).json()["token"]
+        for f in feats:
+            f["_src"] = "Planetary Computer"
+            for k in f["assets"]:
+                f["assets"][k]["href"] = f["assets"][k]["href"] + "?" + token
+        print(f"Planetary Computer: {len(feats)} scenes")
+    except Exception as e:
+        print(f"Planetary Computer unavailable ({type(e).__name__}); using Earth Search")
+        r = requests.post(ES_STAC, json=body, timeout=90)
+        r.raise_for_status()
+        feats = r.json()["features"]
+        for f in feats:
+            f["_src"] = "Earth Search"
+    seen, uniq = set(), []
+    for f in sorted(feats, key=lambda f: (f["properties"]["datetime"][:10], f["properties"]["eo:cloud_cover"])):
+        d = f["properties"]["datetime"][:10]
+        if d not in seen:
+            seen.add(d)
+            uniq.append(f)
+    feats = uniq
     if len(feats) > MAX_SCENES:          # spread the budget over the whole period
         idx = np.round(np.linspace(0, len(feats) - 1, MAX_SCENES)).astype(int)
         feats = [feats[i] for i in idx]
@@ -77,13 +102,20 @@ def otsu(x):
     return c[np.argmax(w1 * w2 * (m1 - m2) ** 2)]
 
 
-def load_scene(feat):
+def asset(feat, band):
     a = feat["assets"]
+    for key in BANDS[band]:
+        if key in a:
+            return a[key]["href"]
+    raise KeyError(band)
+
+
+def load_scene(feat):
     with rasterio.Env(**ENV):
-        red, tr, crs = read_window(a["red"]["href"])
-        green, _, _ = read_window(a["green"]["href"])
-        blue, _, _ = read_window(a["blue"]["href"])
-        scl, _, _ = read_window(a["scl"]["href"], out_shape=red.shape)
+        red, tr, crs = read_window(asset(feat, "red"))
+        green, _, _ = read_window(asset(feat, "green"))
+        blue, _, _ = read_window(asset(feat, "blue"))
+        scl, _, _ = read_window(asset(feat, "scl"), out_shape=red.shape)
     cloudy = float(np.isin(scl, (3, 8, 9, 10)).mean())
     rgb = np.stack([red, green, blue], -1) / 10000.0
     return rgb, tr, crs, cloudy
@@ -171,7 +203,7 @@ def main():
             r, c, peak = ncc_shift(ref["template"], sub, ref["mask"])
             drow, dcol = r - SEARCH, c - SEARCH          # pixels the dune moved since the reference scene
         area_ha = round(float(comp.sum()) * 100 / 1e4, 2) if comp is not None else np.nan
-        rows.append(dict(date=date, scene=f["id"], tile_cloud_pct=round(f["properties"]["eo:cloud_cover"], 2),
+        rows.append(dict(date=date, scene=f["id"], source=f.get("_src", ""), tile_cloud_pct=round(f["properties"]["eo:cloud_cover"], 2),
                          local_cloud_pct=round(cloudy * 100, 2), ncc_peak=round(peak, 3),
                          shift_east_m=round(dcol * 10, 1), shift_north_m=round(-drow * 10, 1),
                          area_ha=area_ha, _comp=comp, _rgb=rgb, _tr=tr))
@@ -209,6 +241,7 @@ def main():
                "speed_east_m_per_yr": round(float(vx), 2), "speed_north_m_per_yr": round(float(vy), 2),
                "bearing_deg": round(bearing, 1), "fit_rms_m": round(float(resid.std()), 1),
                "speed_sigma_m_per_yr": round(se_v, 2), "reference_scene": ref["date"],
+               "data_source": rows[0].get("source", ""),
                "method": "Sentinel-2 L2A 10 m; masked normalised cross-correlation of the dune pixels (reference "
                          "scene outline, dilated 30 m) with sub-pixel peak; linear fit of shift vs time",
                "generated": datetime.now(timezone.utc).strftime("%Y-%m-%d")}

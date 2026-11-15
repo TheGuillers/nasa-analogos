@@ -10,7 +10,7 @@ import sys
 from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from altergea_data import BASE_SITES, get_climate, get_terrain  # noqa: E402
+from altergea_data import BASE_SITES, get_climate, get_terrain, get_terrain_copdem  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "web", "data")
@@ -35,14 +35,23 @@ def main():
         except Exception as e:
             print("terrain failed", e, end="; ")
             alt = slope = rough = float("nan")
+        try:
+            alt30, slope30, rough30, px30 = get_terrain_copdem(lat, lon)
+        except Exception as e:
+            print("Copernicus DEM failed", e, end="; ")
+            alt30 = slope30 = rough30 = px30 = float("nan")
         print("ok")
         sites.append({"site": name, "country": country, "type": kind, "lat": lat, "lon": lon,
                       "precip_mm": nan_none(precip), "temp_range_c": nan_none(trange), "albedo": nan_none(albedo),
                       "wind10m_ms": nan_none(ws), "wind10m_max_ms": nan_none(wsmax), "altitude_m": nan_none(alt),
-                      "slope_deg": nan_none(slope), "roughness_m": nan_none(rough)})
+                      "slope_deg": nan_none(slope), "roughness_m": nan_none(rough),
+                      "alt30_m": nan_none(alt30), "slope30_deg": nan_none(slope30), "rough30_m": nan_none(rough30),
+                      "dem30_px_m": nan_none(px30)})
     out = {"generated": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
            "sources": {"climate": "NASA POWER climatology (PRECTOTCORR, T2M_RANGE, ALLSKY_SRF_ALB, WS10M, WS10M_MAX)",
-                       "terrain": "SRTM 30 m (NASA/NGA), ASTER GDEM fallback, via OpenTopoData; 5x5 grid at ~1 km"},
+                       "terrain_1km": "SRTM 30 m (NASA/NGA), ASTER GDEM fallback, via OpenTopoData; 5x5 grid at ~1 km",
+                       "terrain_30m": "Copernicus DEM GLO-30 (ESA) via Microsoft Planetary Computer; ~3 km window, "
+                                      "mean slope at 30 m and detrended roughness"},
            "sites": sites}
     with open(os.path.join(OUT, "sites.json"), "w", encoding="utf-8") as fh:
         json.dump(out, fh, indent=1, ensure_ascii=False)

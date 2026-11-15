@@ -15,7 +15,17 @@ import plotly.graph_objects as go
 import streamlit as st
 from streamlit_folium import st_folium
 
-from altergea_data import BASE_SITES, get_climate, get_terrain
+from altergea_data import BASE_SITES, get_climate, get_terrain, get_terrain_copdem
+
+# Precomputed values for the base sites (tools/export_sites.py): NASA POWER, SRTM and Copernicus DEM 30 m. Used by
+# default so the app opens in seconds; "Refresh live" in the sidebar re-queries every service.
+PRECOMPUTED = {}
+try:
+    with open("web/data/sites.json", encoding="utf-8") as _fh:
+        for _s in json.load(_fh)["sites"]:
+            PRECOMPUTED[(round(_s["lat"], 4), round(_s["lon"], 4))] = _s
+except Exception:
+    PRECOMPUTED = {}
 
 # geocatmin.ingemmet.gob.pe serves an incomplete certificate chain: Python cannot verify it (curl/browsers can).
 # Only INGEMMET requests use verify=False; NASA services are verified normally.
@@ -116,8 +126,13 @@ ESRI_ATTR = "Esri, Maxar, Earthstar Geographics"
 # 2. NASA DATA
 # ------------------------------------------------------------
 @st.cache_data(ttl=3600, show_spinner=False)
-def load_site(lat, lon):
+def load_site(lat, lon, live=False):
     note = []
+    pre = None if live else PRECOMPUTED.get((round(lat, 4), round(lon, 4)))
+    if pre:
+        g = lambda k: np.nan if pre.get(k) is None else float(pre[k])
+        return (g("precip_mm"), g("temp_range_c"), g("albedo"), g("wind10m_ms"), g("wind10m_max_ms"), g("altitude_m"),
+                g("slope_deg"), g("roughness_m"), g("alt30_m"), g("slope30_deg"), g("rough30_m"), note)
     try:
         precip, trange, albedo, ws, wsmax = get_climate(lat, lon)
     except Exception:
@@ -128,7 +143,17 @@ def load_site(lat, lon):
     except Exception:
         alt = slope = rough = np.nan
         note.append("elevation")
-    return precip, trange, albedo, ws, wsmax, alt, slope, rough, note
+    try:
+        alt30, slope30, rough30, _ = get_terrain_copdem(lat, lon)
+    except Exception:
+        alt30 = slope30 = rough30 = np.nan
+        note.append("Copernicus DEM")
+    return precip, trange, albedo, ws, wsmax, alt, slope, rough, alt30, slope30, rough30, note
+
+
+def slope_of(r):
+    """Slope used by the model: Copernicus DEM 30 m when available, else the ~1 km SRTM estimate."""
+    return r.slope30_deg if isinstance(r.slope30_deg, (int, float)) and not np.isnan(r.slope30_deg) else r.slope_deg
 
 
 # ------------------------------------------------------------
@@ -227,9 +252,12 @@ with st.sidebar.expander("Analyze your own site"):
         st.session_state.custom = []
 
 view = st.sidebar.selectbox("Map view", ["World", "South America", "Peru"])
-st.sidebar.caption("Data: NASA POWER · SRTM/ASTER elevation · NASA Mars Trek (CTX, HiRISE, MOLA) · "
-                   "NASA GIBS (MODIS) · INGEMMET GEOCATMIN · MINAM. Thresholds and weights are documented "
-                   "assumptions (see Methodology).")
+live = st.sidebar.toggle("Refresh NASA / Planetary Computer data live", value=False,
+                         help="Off: precomputed values from web/data/sites.json (instant). On: queries NASA POWER, "
+                              "OpenTopoData and Planetary Computer for every site (~5 min).")
+st.sidebar.caption("Data: NASA POWER · SRTM/ASTER · Copernicus DEM 30 m and Sentinel-2 via Microsoft Planetary Computer · "
+                   "NASA Mars Trek (CTX, HiRISE, MOLA) · NASA GIBS (MODIS) · INGEMMET GEOCATMIN · MINAM. Thresholds and "
+                   "weights are documented assumptions (see Methodology).")
 
 SITES = BASE_SITES + st.session_state.custom
 
@@ -240,18 +268,19 @@ rows, missing = [], []
 bar = st.progress(0.0, text="Connecting to NASA data services…")
 for i, (name, country, kind, lat, lon) in enumerate(SITES):
     bar.progress(i / len(SITES), text=f"Fetching NASA data: {name}")
-    precip, trange, albedo, ws, wsmax, alt, slope, rough, note = load_site(lat, lon)
+    precip, trange, albedo, ws, wsmax, alt, slope, rough, alt30, slope30, rough30, note = load_site(lat, lon, live)
     if note:
         missing.append(f"{name}: {', '.join(note)}")
     rows.append({"site": name, "country": country, "type": kind, "lat": lat, "lon": lon,
                  "precip_mm": precip, "temp_range_c": trange, "albedo": albedo, "wind10m_ms": ws,
-                 "wind10m_max_ms": wsmax, "altitude_m": alt, "slope_deg": slope, "roughness_m": rough})
+                 "wind10m_max_ms": wsmax, "altitude_m": alt, "slope_deg": slope, "roughness_m": rough,
+                 "alt30_m": alt30, "slope30_deg": slope30, "rough30_m": rough30})
 bar.empty()
 df = pd.DataFrame(rows)
 
 
 def components(r, tgt):
-    s = r.slope_deg
+    s = slope_of(r)
     slope_ok = 1.0 if s <= P["slope_limit"] else float(np.exp(-(s - P["slope_limit"]) / P["slope_limit"]))
     return {"aridity": float(np.exp(-r.precip_mm / P["arid_scale"])),
             "thermal": float(np.clip(r.temp_range_c / 25, 0, 1)),
@@ -304,7 +333,7 @@ st.markdown(f"""
 <div class="mast"><p class="wordmark">ALTERGEA</p>
 <p class="desc">Earth analog site intelligence for permanent Moon and Mars bases</p></div>
 <p class="meta">NASA Space Apps 2026, Piura &nbsp;·&nbsp; Target <b>{target}</b> &nbsp;·&nbsp; <b>{len(res)}</b> sites
-&nbsp;·&nbsp; NASA POWER, SRTM, Mars Trek, GIBS, INGEMMET, MINAM</p>
+&nbsp;·&nbsp; NASA POWER, SRTM, Planetary Computer (Copernicus DEM, Sentinel-2), Mars Trek, GIBS, INGEMMET, MINAM</p>
 <div class="rule"></div>
 """, unsafe_allow_html=True)
 
@@ -411,7 +440,8 @@ REF = {
              "wind": "none: weight 0"},
 }
 FMT = {"aridity": lambda r: f"{r.precip_mm:.0f} mm/yr", "thermal": lambda r: f"{r.temp_range_c} °C",
-       "albedo": lambda r: f"{r.albedo}", "slope": lambda r: f"{r.slope_deg}°",
+       "albedo": lambda r: f"{r.albedo}",
+       "slope": lambda r: f"{slope_of(r)}° ({'30 m DEM' if slope_of(r) == r.slope30_deg else '1 km SRTM'})",
        "altitude": lambda r: f"{r.altitude_m:.0f} m", "wind": lambda r: f"{r.wind10m_ms} m/s"}
 
 with t_map:
@@ -453,7 +483,7 @@ with t_map:
         html = (f"<b>#{r.rank} {r.site}</b> ({r.country})<br>{r.type}<br>"
                 f"{target} similarity: <b>{r.score}</b> · {r.tier}<br>"
                 f"Precip.: {r.precip_mm} mm/yr · Range: {r.temp_range_c} °C · Wind: {r.wind10m_ms} m/s<br>"
-                f"Albedo: {r.albedo} · Alt.: {r.altitude_m:.0f} m · Slope: {r.slope_deg}°")
+                f"Albedo: {r.albedo} · Alt.: {r.altitude_m:.0f} m · Slope: {slope_of(r)}°")
         folium.Marker([r.lat, r.lon], icon=icon, popup=folium.Popup(html, max_width=300),
                       tooltip=f"#{r.rank} {r.site}: {r.score}").add_to(m)
     folium.LayerControl().add_to(m)
@@ -635,7 +665,10 @@ with t_site:
     m3.metric("Daily temp. range", f"{r.temp_range_c} °C")
     m4.metric("Wind 10 m (mean / max)", f"{r.wind10m_ms} / {r.wind10m_max_ms} m/s")
     m5.metric("Altitude", f"{r.altitude_m:.0f} m")
-    m6.metric("Mean slope", f"{r.slope_deg}°")
+    if not np.isnan(r.slope30_deg):
+        m6.metric("Slope · roughness (30 m)", f"{r.slope30_deg}° · {r.rough30_m} m", help="Copernicus DEM GLO-30 via Planetary Computer, ~3 km window")
+    else:
+        m6.metric("Mean slope (1 km)", f"{r.slope_deg}°")
     left, right = st.columns([1, 1])
     with left:
         cvals = {LABELS[k]: r[f"sim_{k}"] for k in LABELS}
@@ -736,7 +769,9 @@ with t_twin:
                    "Sentinel-2 measurement below. Mars: Silvestro et al. (2013, HiRISE) as summarised by Bridges "
                    "et al. (2018); ripple range from Baker et al. (2018).")
     with g2:
-        earth_alt = f"{mb.altitude_m:.0f} m (SRTM 30 m)" if mb is not None and not np.isnan(mb.altitude_m) else "n/a"
+        earth_alt = (f"{mb.alt30_m:.0f} m; slope {mb.slope30_deg}°, roughness {mb.rough30_m} m (Copernicus DEM 30 m)"
+                     if mb is not None and not np.isnan(mb.alt30_m) else
+                     f"{mb.altitude_m:.0f} m (SRTM 30 m)" if mb is not None and not np.isnan(mb.altitude_m) else "n/a")
         earth_alb = f"{mb.albedo} (POWER, 50 km cell)" if mb is not None and not np.isnan(mb.albedo) else "n/a"
         earth_wind = (f"{mb.wind10m_ms} mean / {mb.wind10m_max_ms} max m/s (POWER)"
                       if mb is not None and not np.isnan(mb.wind10m_ms) else "n/a")
@@ -749,8 +784,8 @@ with t_twin:
             ("Elevation", earth_alt, "−4,422 m MOLA datum (rover, sol 1192)"),
             ("Wind 10 m", earth_wind, "REMS in situ (not yet in app)"),
             ("Precipitation", earth_pr, "None"),
-            ("Topography source", "SRTM/Copernicus 30 m", "HiRISE DTM 1 m (Gale_DEM_SMG_1m); MOLA 463 m is too coarse"),
-            ("Imagery source", "Esri imagery; NASA MODIS (GIBS)", "CTX mosaic; HiRISE mosaic (Mars Trek)"),
+            ("Topography source", "Copernicus DEM GLO-30 (ESA, via Planetary Computer); SRTM 30 m", "HiRISE DTM 1 m (Gale_DEM_SMG_1m); MOLA 463 m is too coarse"),
+            ("Imagery source", "Sentinel-2 10 m (Planetary Computer); Esri imagery; NASA MODIS (GIBS)", "CTX mosaic; HiRISE mosaic (Mars Trek)"),
             ("Site management", "MINAM: vulnerable to intensive tourism (sandboarding)", "Rover science site, not a base site"),
         ], columns=["Feature", "Médano Blanco", "Bagnold / Namib Dune"])
         st.dataframe(cmp, hide_index=True, height=360)
@@ -847,8 +882,14 @@ Moon and Mars base sites, to help choose training fields on Earth. The flagship 
 ### Data used
 - **NASA POWER** (power.larc.nasa.gov): precipitation (`PRECTOTCORR`), daily temperature range (`T2M_RANGE`),
   surface albedo (`ALLSKY_SRF_ALB`) and 10 m wind, mean and max (`WS10M`, `WS10M_MAX`), climatological means.
+- **Copernicus DEM GLO-30** (ESA) via **Microsoft Planetary Computer** (STAC API, public signing, no account):
+  altitude, mean slope at 30 m and detrended roughness over a ~3 km window. This is the slope the model uses, at the
+  resolution the Mars side (HiRISE DTM resampled to 30 m) can match.
 - **SRTM** (NASA/NGA) elevation, with **ASTER GDEM** (NASA/METI) as fallback for polar sites, served by
-  OpenTopoData: altitude and mean slope over a ~4 km window (5×5 grid, ~1 km spacing).
+  OpenTopoData: altitude and a regional slope over a ~4 km window (5×5 grid, ~1 km spacing); fallback when the
+  Copernicus read fails and the source for user-added sites in the static web build.
+- **Copernicus Sentinel-2 L2A** via **Planetary Computer** (Earth Search on AWS as fallback catalogue): 10 m imagery
+  2017–2026 for the dune-migration measurement.
 - **NASA Mars Trek** (trek.nasa.gov) WMTS tiles for the Mars side of the twin view: Viking MDIM 2.1 colour
   mosaic, MOLA colour hillshade (463 m), MRO CTX Gale crater mosaic, MRO HiRISE Curiosity roving-site mosaic and
   HiRISE 1 m DEM of Gale.
@@ -864,7 +905,8 @@ Each variable becomes a 0–1 similarity, combined with a weighted average.
 - **Aridity:** exp(−precipitation / {arid_scale} mm).
 - **Thermal range:** daily range / 25 °C, capped at 1 (relative closeness: no Earth site matches the Moon or Mars).
 - **Albedo:** Gaussian closeness to the target value ({ALB[target]} for {target}).
-- **Slope:** full score up to {slope_limit}°, penalized above.
+- **Slope:** mean slope at 30 m (Copernicus DEM) with full score up to {slope_limit}°, penalized above; the 1 km SRTM
+  slope is used only when the 30 m read is missing.
 - **Altitude:** altitude / 4000 m, a proxy for low atmospheric pressure.
 - **Wind (aeolian activity):** mean 10 m wind / {wind_thr} m/s, capped at 1. Wind drives dune mobility and
   dust; the threshold is the order of magnitude needed to move sand on Earth. Weight 0 for the Moon (no atmosphere).
@@ -887,6 +929,7 @@ model design and interpretation were done by the team.
 ### References
 - NASA POWER Project, https://power.larc.nasa.gov
 - NASA Mars Trek, https://trek.nasa.gov/mars · NASA GIBS, https://gibs.earthdata.nasa.gov
+- Microsoft Planetary Computer (Copernicus DEM GLO-30, Sentinel-2 L2A), https://planetarycomputer.microsoft.com
 - SRTM (NASA/NGA) and ASTER GDEM (NASA/METI), served by OpenTopoData, https://www.opentopodata.org
 - INGEMMET, GEOCATMIN: https://geocatmin.ingemmet.gob.pe
 - MINAM / SINIA, Diagnóstico y microzonificación del ámbito de uso turístico de la duna Médano Blanco (2022),

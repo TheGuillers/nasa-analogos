@@ -38,7 +38,8 @@ const REF = {
   Moon: { aridity: 'no atmosphere', thermal: '≈ 250 °C diurnal (Diviner, equator)', albedo: t => `${t}`,
     slope: s => `≤ ${s}° lander-safe`, altitude: 'vacuum (altitude is the Earth proxy)', wind: 'none: weight 0' } };
 const FMT = { aridity: r => `${Math.round(r.precip_mm)} mm/yr`, thermal: r => `${r.temp_range_c} °C`,
-  albedo: r => `${r.albedo}`, slope: r => `${r.slope_deg}°`, altitude: r => `${Math.round(r.altitude_m)} m`,
+  albedo: r => `${r.albedo}`, slope: r => isNum(r.slope30_deg) ? `${r.slope30_deg}° (30 m DEM)` : `${r.slope_deg}° (1 km SRTM)`,
+  altitude: r => `${Math.round(r.altitude_m)} m`,
   wind: r => `${r.wind10m_ms} m/s` };
 
 // ---------- state ----------
@@ -53,8 +54,9 @@ const isNum = v => typeof v === 'number' && isFinite(v);
 const fmtRef = (k) => { const r = REF[S.target][k]; return typeof r === 'function' ? r(k === 'albedo' ? S.alb[S.target] : S.P.slope) : r; };
 
 // ---------- model ----------
+const slopeOf = r => isNum(r.slope30_deg) ? r.slope30_deg : r.slope_deg;   // Copernicus DEM 30 m, else 1 km SRTM
 function components(r, tgt) {
-  const s = r.slope_deg;
+  const s = slopeOf(r);
   const slopeOk = !isNum(s) ? NaN : (s <= S.P.slope ? 1 : Math.exp(-(s - S.P.slope) / S.P.slope));
   const clip = (v, a, b) => Math.min(b, Math.max(a, v));
   return {
@@ -233,7 +235,7 @@ function renderMap() {
     const mk = L.marker([r.lat, r.lon], { icon, title: `#${r.rank} ${r.site}: ${r.score}` }).addTo(markerLayer);
     mk.bindPopup(`<b>#${r.rank} ${r.site}</b> (${r.country})<br>${r.type}<br>${S.target} similarity: <b>${r.score}</b> · ${r.tier}<br>
       Precip.: ${r.precip_mm} mm/yr · Range: ${r.temp_range_c} °C · Wind: ${r.wind10m_ms} m/s<br>
-      Albedo: ${r.albedo} · Alt.: ${Math.round(r.altitude_m)} m · Slope: ${r.slope_deg}°`, { maxWidth: 300 });
+      Albedo: ${r.albedo} · Alt.: ${Math.round(r.altitude_m)} m · Slope: ${slopeOf(r)}°`, { maxWidth: 300 });
     mk.on('click', () => setFocus(r.site));
   });
   const sel = $('#focus_sel'); const cur = S.focus || '';
@@ -348,7 +350,7 @@ function renderRank() {
     textposition: 'top center', textfont: { size: 10, color: MUTED }, marker: { size: 12, color: v.map(r => r.score), colorscale: [[0, SCALE[0]], [.45, SCALE[1]], [.6, SCALE[2]], [1, SCALE[3]]], cmin: 0, cmax: 1 },
     hovertemplate: '%{text}<br>Moon %{x:.2f} · Mars %{y:.2f}<extra></extra>' }],
     { height: H(500, 380), margin: { l: 50, r: 10, t: 10, b: 40 }, font: FONT, xaxis: { title: 'Moon similarity' }, yaxis: { title: 'Mars similarity' }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)' }, PL);
-  const cols = ['rank', 'site', 'country', 'type', 'score', 'tier', 'precip_mm', 'temp_range_c', 'albedo', 'wind10m_ms', 'wind10m_max_ms', 'altitude_m', 'slope_deg', 'roughness_m', 'score_mars', 'score_moon'];
+  const cols = ['rank', 'site', 'country', 'type', 'score', 'tier', 'precip_mm', 'temp_range_c', 'albedo', 'wind10m_ms', 'wind10m_max_ms', 'altitude_m', 'slope30_deg', 'rough30_m', 'slope_deg', 'roughness_m', 'score_mars', 'score_moon'];
   $('#rank_table').innerHTML = '<tr>' + cols.map(c => `<th>${c}</th>`).join('') + '</tr>' +
     v.map(r => '<tr>' + cols.map(c => `<td>${isNum(r[c]) ? r[c] : (r[c] ?? '')}</td>`).join('') + '</tr>').join('');
   $('#dl_csv').onclick = () => {
@@ -430,11 +432,11 @@ function renderTwinData() {
   const cmp = [['Dune type', 'Barchan, active; ~16.4 ha', 'Barchans + linear dunes, active'],
     ['Sand composition', "Quartz sand, light-toned: INGEMMET unit Q-eo 'Depósito eólico'", 'Dark basaltic, olivine-bearing (ChemCam/APXS)'],
     ['Surface albedo', ev('albedo', v => `${v} (POWER, 50 km cell)`), 'Low (dark sand)'],
-    ['Elevation', ev('altitude_m', v => `${Math.round(v)} m (SRTM 30 m)`), '−4,422 m MOLA datum (rover, sol 1192)'],
+    ['Elevation and relief', mb && isNum(mb.alt30_m) ? `${Math.round(mb.alt30_m)} m; slope ${mb.slope30_deg}°, roughness ${mb.rough30_m} m (Copernicus DEM 30 m)` : ev('altitude_m', v => `${Math.round(v)} m (SRTM 30 m)`), '−4,422 m MOLA datum (rover, sol 1192)'],
     ['Wind 10 m', mb ? `${mb.wind10m_ms} mean / ${mb.wind10m_max_ms} max m/s (POWER)` : 'n/a', 'REMS in situ (not yet in app)'],
     ['Precipitation', ev('precip_mm', v => `${v} mm/yr (POWER)`), 'None'],
-    ['Topography source', 'SRTM/Copernicus 30 m', 'HiRISE DTM 1 m (Gale_DEM_SMG_1m); MOLA 463 m is too coarse'],
-    ['Imagery source', 'Sentinel-2 10 m; Esri imagery; NASA MODIS (GIBS)', 'CTX mosaic; HiRISE mosaic (Mars Trek)'],
+    ['Topography source', 'Copernicus DEM GLO-30 (ESA, via Planetary Computer); SRTM 30 m', 'HiRISE DTM 1 m (Gale_DEM_SMG_1m); MOLA 463 m is too coarse'],
+    ['Imagery source', 'Sentinel-2 10 m (Planetary Computer); Esri imagery; NASA MODIS (GIBS)', 'CTX mosaic; HiRISE mosaic (Mars Trek)'],
     ['Site management', 'MINAM: vulnerable to intensive tourism (sandboarding)', 'Rover science site, not a base site']];
   $('#cmp_table').innerHTML = '<tr><th>Feature</th><th>Médano Blanco</th><th>Bagnold / Namib Dune</th></tr>' + cmp.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('');
   const blk = $('#s2_block');
@@ -517,7 +519,7 @@ function renderMethod() {
   const W = S.W;
   $('#method_model').innerHTML = `Each variable becomes a 0–1 similarity, combined with a weighted average.<br>
     <b>Aridity:</b> exp(−precipitation / ${S.P.arid} mm). <b>Thermal range:</b> daily range / 25 °C, capped at 1.
-    <b>Albedo:</b> Gaussian closeness to the target value (${S.alb[S.target]} for ${S.target}). <b>Slope:</b> full score up to ${S.P.slope}°, penalised above.
+    <b>Albedo:</b> Gaussian closeness to the target value (${S.alb[S.target]} for ${S.target}). <b>Slope:</b> mean slope at 30 m (Copernicus DEM via Planetary Computer) with full score up to ${S.P.slope}°, penalised above; the 1 km SRTM slope is used only where the 30 m read is missing (user-added sites).
     <b>Altitude:</b> altitude / 4000 m, a proxy for low atmospheric pressure. <b>Wind (aeolian activity):</b> mean 10 m wind / ${S.P.wind} m/s, capped at 1; weight 0 for the Moon.<br>
     <b>Weights (${S.target}):</b> ${KEYS.map(k => `${LABELS[k]} ${W[k].toFixed(2)}`).join(', ')}.`;
 }
@@ -537,11 +539,12 @@ function parseCsv(text) {
 
 async function init() {
   buildSidebar(); buildTabs(); buildMap();
+  const DATA_V = '?v=20261115';     // bump together with the script tag in index.html when data files change
   try {
-    const js = await (await fetch('data/sites.json')).json();
+    const js = await (await fetch('data/sites.json' + DATA_V, { cache: 'no-cache' })).json();
     S.base = js.sites.map(r => { for (const k in r) if (r[k] === null) r[k] = NaN; return r; });
   } catch (e) { $('#stats').innerHTML = '<p class="err">Could not load data/sites.json.</p>'; return; }
-  try { S.s2 = await (await fetch('data/medano_blanco_migration.json')).json(); S.s2rows = parseCsv(await (await fetch('data/medano_blanco_migration.csv')).text()); } catch (e) { S.s2 = null; }
+  try { S.s2 = await (await fetch('data/medano_blanco_migration.json' + DATA_V, { cache: 'no-cache' })).json(); S.s2rows = parseCsv(await (await fetch('data/medano_blanco_migration.csv' + DATA_V, { cache: 'no-cache' })).text()); } catch (e) { S.s2 = null; }
   setTarget('Mars', false);
 }
 init();

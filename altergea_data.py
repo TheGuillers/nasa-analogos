@@ -1,9 +1,13 @@
-"""Shared data access for ALTERGEA: NASA POWER climatology and SRTM/ASTER terrain (via OpenTopoData).
+"""Shared data access for ALTERGEA: NASA POWER climatology, SRTM/ASTER terrain (via OpenTopoData) and
+Copernicus DEM GLO-30 terrain (via Microsoft Planetary Computer).
 Used by app.py (Streamlit) and tools/export_sites.py (static web build)."""
 import time
 
 import numpy as np
 import requests
+
+PC_STAC = "https://planetarycomputer.microsoft.com/api/stac/v1/search"
+PC_SIGN = "https://planetarycomputer.microsoft.com/api/sas/v1/sign"
 
 BASE_SITES = [
     ("Médano Blanco (Sechura)", "Peru", "Active barchan dune field", -5.554, -80.757),
@@ -45,6 +49,48 @@ def get_climate(lat, lon):
             err = e
             time.sleep(2)
     raise err
+
+
+def pc_sign(href):
+    """Sign a Planetary Computer blob URL (public endpoint, no account needed)."""
+    r = requests.get(PC_SIGN, params={"href": href}, timeout=30)
+    r.raise_for_status()
+    return r.json()["href"]
+
+
+def get_terrain_copdem(lat, lon, half_km=1.5):
+    """Copernicus DEM GLO-30 (ESA, via Microsoft Planetary Computer): centre altitude (m), mean slope (°) at 30 m and
+    roughness (m, standard deviation of the detrended surface) over a ~3 km window. Needs rasterio."""
+    import rasterio
+    from rasterio.windows import from_bounds
+
+    r = requests.post(PC_STAC, json={"collections": ["cop-dem-glo-30"], "intersects": {"type": "Point", "coordinates": [lon, lat]},
+                                     "limit": 1}, timeout=60)
+    r.raise_for_status()
+    feats = r.json()["features"]
+    if not feats:
+        raise ValueError("no Copernicus DEM tile")
+    href = pc_sign(feats[0]["assets"]["data"]["href"])
+    dlat = half_km / 111.32
+    dlon = dlat / max(np.cos(np.radians(lat)), 0.2)
+    with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR", CPL_VSIL_CURL_ALLOWED_EXTENSIONS=".tif"):
+        with rasterio.open(href) as src:
+            win = from_bounds(lon - dlon, lat - dlat, lon + dlon, lat + dlat, transform=src.transform).round_offsets().round_lengths()
+            z = src.read(1, window=win, masked=True).astype(float).filled(np.nan)
+            px_deg = abs(src.transform.a)
+    if z.size < 100 or np.isnan(z).mean() > 0.5:
+        raise ValueError("Copernicus DEM window empty")
+    z = np.where(np.isnan(z), np.nanmean(z), z)
+    dy = px_deg * 111320.0
+    dx = dy * np.cos(np.radians(lat))
+    gy, gx = np.gradient(z, dy, dx)
+    slope = float(np.degrees(np.arctan(np.hypot(gx, gy))).mean())
+    yy, xx = np.mgrid[0:z.shape[0], 0:z.shape[1]]
+    A = np.c_[xx.ravel(), yy.ravel(), np.ones(z.size)]
+    coef, *_ = np.linalg.lstsq(A, z.ravel(), rcond=None)
+    rough = float((z.ravel() - A @ coef).std())
+    cz = float(z[z.shape[0] // 2, z.shape[1] // 2])
+    return round(cz, 0), round(slope, 2), round(rough, 1), round(float(dx), 1)
 
 
 def get_terrain(lat, lon):

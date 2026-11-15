@@ -1,8 +1,9 @@
 {
- "generated": "2026-11-14",
+ "generated": "2026-11-15",
  "sources": {
   "climate": "NASA POWER climatology (PRECTOTCORR, T2M_RANGE, ALLSKY_SRF_ALB, WS10M, WS10M_MAX)",
-  "terrain": "SRTM 30 m (NASA/NGA), ASTER GDEM fallback, via OpenTopoData; 5x5 grid at ~1 km"
+  "terrain_1km": "SRTM 30 m (NASA/NGA), ASTER GDEM fallback, via OpenTopoData; 5x5 grid at ~1 km",
+  "terrain_30m": "Copernicus DEM GLO-30 (ESA) via Microsoft Planetary Computer; ~3 km window, mean slope at 30 m and detrended roughness"
  },
  "sites": [
   {
@@ -18,7 +19,11 @@
    "wind10m_max_ms": 13.11,
    "altitude_m": 12.0,
    "slope_deg": 0.19,
-   "roughness_m": 3.3
+   "roughness_m": 3.3,
+   "alt30_m": 12.0,
+   "slope30_deg": 0.95,
+   "rough30_m": 2.1,
+   "dem30_px_m": 30.8
   },
   {
    "site": "Nazca Plains",
@@ -33,7 +38,11 @@
    "wind10m_max_ms": 9.45,
    "altitude_m": 410.0,
    "slope_deg": 1.08,
-   "roughness_m": 25.6
+   "roughness_m": 25.6,
+   "alt30_m": 411.0,
+   "slope30_deg": 3.02,
+   "rough30_m": 6.6,
+   "dem30_px_m": 29.9
   },
   {
    "site": "Ubinas Volcano",
@@ -48,7 +57,11 @@
    "wind10m_max_ms": 11.57,
    "altitude_m": 5567.0,
    "slope_deg": 18.15,
-   "roughness_m": 342.6
+   "roughness_m": 342.6,
+   "alt30_m": 5565.0,
+   "slope30_deg": 30.69,
+   "rough30_m": 204.5,
+   "dem30_px_m": 29.7
   },
   {
    "site": "Misti Volcano",
@@ -63,7 +76,11 @@
    "wind10m_max_ms": 10.38,
    "altitude_m": 5470.0,
    "slope_deg": 24.05,
-   "roughness_m": 446.7
+   "roughness_m": 446.7,
+   "alt30_m": 5497.0,
+   "slope30_deg": 32.11,
+   "rough30_m": 196.3,
+   "dem30_px_m": 29.7
   },
   {
    "site": "Sabancaya Volcano",
@@ -78,7 +95,11 @@
    "wind10m_max_ms": 9.21,
    "altitude_m": 5528.0,
    "slope_deg": 9.72,
-   "roughness_m": 187.8
+   "roughness_m": 187.8,
+   "alt30_m": 5523.0,
+   "slope30_deg": 19.7,
+   "rough30_m": 90.7,
+   "dem30_px_m": 29.8
   },
   {
    "site": "Atacama Desert",
@@ -93,7 +114,11 @@
    "wind10m_max_ms": 11.95,
    "altitude_m": 2740.0,
    "slope_deg": 5.86,
-   "roughness_m": 139.3
+   "roughness_m": 139.3,
+   "alt30_m": 2743.0,
+   "slope30_deg": 10.84,
+   "rough30_m": 31.9,
+   "dem30_px_m": 28.3
   },
   {
    "site": "Uyuni Salt Flat",
@@ -108,7 +133,11 @@
    "wind10m_max_ms": 18.74,
    "altitude_m": 3661.0,
    "slope_deg": 0.11,
-   "roughness_m": 1.5
+   "roughness_m": 1.5,
+   "alt30_m": 3654.0,
+   "slope30_deg": 0.0,
+   "rough30_m": 0.0,
+   "dem30_px_m": 29.0
   },
   {
    "site": "Mt. Etna",
@@ -123,7 +152,11 @@
    "wind10m_max_ms": 18.69,
    "altitude_m": 3199.0,
    "slope_deg": 17.01,
-   "roughness_m": 278.8
+   "roughness_m": 278.8,
+   "alt30_m": 3097.0,
+   "slope30_deg": 21.78,
+   "rough30_m": 106.3,
+   "dem30_px_m": 24.4
   },
   {
    "site": "Mauna Kea",
@@ -138,7 +171,11 @@
    "wind10m_max_ms": 14.42,
    "altitude_m": 4147.0,
    "slope_deg": 7.43,
-   "roughness_m": 118.1
+   "roughness_m": 118.1,
+   "alt30_m": 4143.0,
+   "slope30_deg": 13.32,
+   "rough30_m": 70.1,
+   "dem30_px_m": 29.1
   },
   {
    "site": "Rio Tinto",
@@ -153,7 +190,11 @@
    "wind10m_max_ms": 16.87,
    "altitude_m": 415.0,
    "slope_deg": 4.25,
-   "roughness_m": 90.5
+   "roughness_m": 90.5,
+   "alt30_m": 420.0,
+   "slope30_deg": 13.42,
+   "rough30_m": 38.3,
+   "dem30_px_m": 24.5
   },
   {
    "site": "Death Valley",
@@ -168,7 +209,11 @@
    "wind10m_max_ms": 15.6,
    "altitude_m": -55.0,
    "slope_deg": 1.65,
-   "roughness_m": 35.8
+   "roughness_m": 35.8,
+   "alt30_m": -58.0,
+   "slope30_deg": 2.64,
+   "rough30_m": 9.6,
+   "dem30_px_m": 24.9
   },
   {
    "site": "Dallol",
@@ -183,7 +228,11 @@
    "wind10m_max_ms": 11.24,
    "altitude_m": -91.0,
    "slope_deg": 0.49,
-   "roughness_m": 9.1
+   "roughness_m": 9.1,
+   "alt30_m": -93.0,
+   "slope30_deg": 2.02,
+   "rough30_m": 12.2,
+   "dem30_px_m": 30.0
   },
   {
    "site": "Devon Island",
@@ -198,7 +247,11 @@
    "wind10m_max_ms": 17.59,
    "altitude_m": 126.0,
    "slope_deg": 2.08,
-   "roughness_m": 17.7
+   "roughness_m": 17.7,
+   "alt30_m": 138.0,
+   "slope30_deg": 3.11,
+   "rough30_m": 13.0,
+   "dem30_px_m": 23.4
   },
   {
    "site": "Mojave Desert",
@@ -213,7 +266,11 @@
    "wind10m_max_ms": 17.55,
    "altitude_m": 933.0,
    "slope_deg": 3.24,
-   "roughness_m": 58.6
+   "roughness_m": 58.6,
+   "alt30_m": 920.0,
+   "slope30_deg": 7.95,
+   "rough30_m": 22.9,
+   "dem30_px_m": 25.3
   }
  ]
 }
