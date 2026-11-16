@@ -23,7 +23,6 @@ const TREK_LAYERS = [
   ['MRO CTX · Gale crater mosaic', 'Gale_CTX_BlockAdj_dd', 'png', 14, true, false],
   ['MRO HiRISE · Curiosity roving site mosaic', 'curiosity_hirise_mosaic', 'png', 18, true, false],
   ['MRO HiRISE · Gale DEM 1 m (hillshade)', 'Gale_DEM_SMG_1m', 'png', 16, false, false]];
-const GIBS = 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/2025-08-15/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg';
 const ESRI_IMG = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
 const ESRI_TOPO = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}';
 const ESRI_ATTR = 'Esri, Maxar, Earthstar Geographics';
@@ -207,8 +206,7 @@ function buildMap() {
   const sat = L.tileLayer(ESRI_IMG, { attribution: ESRI_ATTR, maxZoom: 19 }).addTo(m);
   const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors', maxZoom: 19 });
   const topo = L.tileLayer(ESRI_TOPO, { attribution: 'Esri', maxZoom: 19 });
-  const gibs = L.tileLayer(GIBS, { attribution: 'NASA GIBS / MODIS Terra', maxNativeZoom: 9, maxZoom: 19, opacity: .85 });
-  const overlays = { 'NASA MODIS true colour (GIBS)': gibs };
+  const overlays = { ...gibsOverlays() };
   for (const [label, [svc, layer]] of Object.entries(ING_SERVICES))
     overlays[`INGEMMET · ${label}`] = L.tileLayer.wms(ING_WMS(svc), { layers: layer, format: 'image/png', transparent: true, version: '1.1.1', opacity: .6 });
   L.control.layers({ 'Satellite': sat, 'Street map': osm, 'Topographic': topo }, overlays).addTo(m);
@@ -307,9 +305,11 @@ async function renderFocus() {
     <div class="patches"><div><canvas id="cv_e" width="768" height="768"></canvas><div class="cap" id="cap_e"></div></div>
     <div><canvas id="cv_b" width="768" height="768"></canvas><div class="cap" id="cap_b"></div></div>
     <div><canvas id="cv_m" width="768" height="768"></canvas><div class="cap" id="cap_m"></div></div></div>
+    <div id="nasa_focus"></div>
     <div class="two"><div><p class="h">Visual similarity of the two patches <span class="hint">(imagery statistics, not a physical measurement)</span></p><div id="vis_tbl" class="spin">Computing…</div></div>
     <div><p class="h">Environmental similarity to ${S.target}, by variable</p><div class="tbl-wrap"><table class="data" id="env_tbl"></table></div>
     <p class="hint">Weighted overall: ${Math.round(r.score * 100)} % (${r.tier}). Open the Similarity explorer tab to compare several sites variable by variable.</p></div></div>`;
+  nasaDataBlock(r.lat, r.lon, $('#nasa_focus'));
   $('#focus_back').addEventListener('click', () => { setFocus(null); window.scrollTo({ top: 0, behavior: 'smooth' }); });
   $('#env_tbl').innerHTML = '<tr><th>Variable</th><th>Earth value</th><th>Similarity %</th><th>Weight</th></tr>' +
     KEYS.map(k => `<tr><td>${LABELS[k]}</td><td>${FMT[k](r)}</td><td>${pct(r.comps[k])}</td><td>${S.W[k].toFixed(2)}</td></tr>`).join('');
@@ -403,7 +403,7 @@ function ensureTwin() {
   if (twinBuilt) { renderTwinData(); return; } twinBuilt = true;
   const me = L.map('map_earth', { center: MB, zoom: 14 });
   const sat = L.tileLayer(ESRI_IMG, { attribution: ESRI_ATTR, maxZoom: 19 }).addTo(me);
-  const ov = { 'NASA MODIS true colour (GIBS, 250 m)': L.tileLayer(GIBS, { attribution: 'NASA GIBS / MODIS Terra', maxNativeZoom: 9, maxZoom: 19, opacity: .85 }) };
+  const ov = { ...gibsOverlays() };
   for (const [label, [svc, layer]] of Object.entries(ING_SERVICES))
     ov[`INGEMMET · ${label}`] = L.tileLayer.wms(ING_WMS(svc), { layers: layer, format: 'image/png', transparent: true, version: '1.1.1', opacity: .6 });
   L.control.layers({ 'Satellite (Esri)': sat }, ov).addTo(me);
@@ -418,7 +418,8 @@ function ensureTwin() {
   L.control.layers(bases, overs).addTo(mm);
   L.circleMarker(NAMIB, { radius: 8, color: RED, fillColor: RED, fillOpacity: .9 }).bindTooltip('Namib Dune · Curiosity sol 1192').addTo(mm);
   L.circleMarker(BRADBURY, { radius: 6, color: '#fff', fillColor: '#fff', fillOpacity: .9 }).bindTooltip('Bradbury Landing · Curiosity, 2012').addTo(mm);
-  maps.mars = mm;
+  maps.mars = mm; addMepMarkers(mm);
+  nasaDataBlock(MB[0], MB[1], $('#nasa_twin')); odeBlock($('#pds_block'));
   renderTwinData();
 }
 function renderTwinData() {
@@ -540,8 +541,8 @@ function parseCsv(text) {
 }
 
 async function init() {
-  buildSidebar(); buildTabs(); buildMap();
-  const DATA_V = '?v=20261118';     // bump together with the script tag in index.html when data files change
+  buildSidebar(); initNasaControls(); buildTabs(); buildMap();
+  const DATA_V = '?v=20261121';     // bump together with the script tag in index.html when data files change
   try {
     const js = await (await fetch('data/sites.json' + DATA_V, { cache: 'no-cache' })).json();
     S.base = js.sites.map(r => { for (const k in r) if (r[k] === null) r[k] = NaN; return r; });

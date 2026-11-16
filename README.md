@@ -54,7 +54,9 @@ orbital measurements against ground truth, 50 km from Piura with documented acce
 | SRTM (NASA/NGA), ASTER GDEM (NASA/METI) | Elevation and regional slope (5×5 point window at 1 km), via OpenTopoData; fallback and source for user-added sites in the static web version |
 | Copernicus Sentinel-2 L2A via **Planetary Computer** (Earth Search on AWS as fallback) | 2017–2026 series at 10 m to measure dune migration |
 | NASA Mars Trek (WMTS) | Viking MDIM 2.1, MOLA 463 m, Gale CTX mosaic, Curiosity HiRISE mosaic, 1 m HiRISE DEM |
-| NASA GIBS / Worldview | MODIS Terra true colour as the Earth base layer |
+| NASA GIBS / Worldview | MODIS Terra, VIIRS NOAA-21 and VIIRS SNPP true-colour layers on the Earth maps, with a date control (web version) |
+| NASA Earthdata (CMR API, Earthdata Search) | Live query of the collections and granules (MODIS MOD09GA, Harmonized Landsat HLSL30 and Sentinel-2 HLSS30) that cover each site, with links to Earthdata Search and Worldview (web version) |
+| NASA PDS Geosciences Node, Mars Exploration Program | Orbital Data Explorer queried live for HiRISE DTMs and images around the MSL, MER (Spirit, Opportunity) and Mars 2020 sites, shown in the Mars twin tab (web version) |
 | INGEMMET GEOCATMIN | Integrated 1:100k geology and geomorphology (WMS and point query) |
 | MINAM / SINIA (2022) | Diagnosis and microzoning of the Médano Blanco dune: type, area, migration, restrictions |
 
@@ -98,6 +100,9 @@ model design and the interpretation are the team's.
 - Silvestro, S. et al. (2013). Pervasive aeolian activity along rover Curiosity's traverse in Gale Crater. *Geology* 41, 483–486.
 - Baker, M. M. et al. (2018). The Bagnold Dunes in southern summer. *GRL*. doi:10.1029/2018GL079040
 - NASA POWER https://power.larc.nasa.gov · NASA Mars Trek https://trek.nasa.gov/mars · NASA GIBS https://gibs.earthdata.nasa.gov
+- NASA Earthdata Search https://search.earthdata.nasa.gov/search?q=sechura&lat=-5.940280099950111&long=-80.54643451544943&overlays=bordersRoads%2Ccoastlines%2CplaceLabels&zoom=10.81509069402037
+- NASA Worldview https://worldview.earthdata.nasa.gov/index.html?v=-504.22662231419474,-190.8513647590744,359.77337768580526,219.7736352409256&t=2026-09-07-T01%3A58%3A13Z
+- NASA PDS Geosciences Node, Mars Exploration Program https://pds-geosciences.wustl.edu/missions/mep/index.htm
 - Microsoft Planetary Computer (Copernicus DEM GLO-30, Sentinel-2 L2A) https://planetarycomputer.microsoft.com
 - Earth Search STAC (Element 84) https://earth-search.aws.element84.com/v1 · INGEMMET https://geocatmin.ingemmet.gob.pe
 
@@ -160,7 +165,9 @@ de medidas orbitales contra verdad de terreno, a 50 km de Piura y con acceso e i
 | SRTM (NASA/NGA), ASTER GDEM (NASA/METI) | Altitud y pendiente regional (ventana de 5×5 puntos a 1 km), vía OpenTopoData; respaldo y fuente para sitios añadidos por el usuario en la web estática |
 | Copernicus Sentinel-2 L2A vía **Planetary Computer** (Earth Search en AWS como respaldo) | Serie 2017–2026 a 10 m para medir la migración de la duna |
 | NASA Mars Trek (WMTS) | Viking MDIM 2.1, MOLA 463 m, mosaico CTX de Gale, mosaico HiRISE de Curiosity, DEM HiRISE 1 m |
-| NASA GIBS / Worldview | MODIS Terra color verdadero como capa base terrestre |
+| NASA GIBS / Worldview | Capas en color verdadero MODIS Terra, VIIRS NOAA-21 y VIIRS SNPP en los mapas terrestres, con selector de fecha (versión web) |
+| NASA Earthdata (API CMR, Earthdata Search) | Consulta en vivo de las colecciones y granules (MODIS MOD09GA, Harmonized Landsat HLSL30 y Sentinel-2 HLSS30) que cubren cada sitio, con enlaces a Earthdata Search y Worldview (versión web) |
+| NASA PDS Geosciences Node, Mars Exploration Program | Orbital Data Explorer consultado en vivo para DTM e imágenes HiRISE alrededor de los sitios de MSL, MER (Spirit, Opportunity) y Mars 2020, en la pestaña del gemelo marciano (versión web) |
 | INGEMMET GEOCATMIN | Geología integrada 1:100k y geomorfología (WMS y consulta puntual) |
 | MINAM / SINIA (2022) | Diagnóstico y microzonificación de la duna Médano Blanco: tipo, área, migración, restricciones |
 
@@ -204,5 +211,8 @@ de sitios, el diseño del modelo y la interpretación son del equipo.
 - Silvestro, S. et al. (2013). Pervasive aeolian activity along rover Curiosity's traverse in Gale Crater. *Geology* 41, 483–486.
 - Baker, M. M. et al. (2018). The Bagnold Dunes in southern summer. *GRL*. doi:10.1029/2018GL079040
 - NASA POWER https://power.larc.nasa.gov · NASA Mars Trek https://trek.nasa.gov/mars · NASA GIBS https://gibs.earthdata.nasa.gov
+- NASA Earthdata Search https://search.earthdata.nasa.gov/search?q=sechura&lat=-5.940280099950111&long=-80.54643451544943&overlays=bordersRoads%2Ccoastlines%2CplaceLabels&zoom=10.81509069402037
+- NASA Worldview https://worldview.earthdata.nasa.gov/index.html?v=-504.22662231419474,-190.8513647590744,359.77337768580526,219.7736352409256&t=2026-09-07-T01%3A58%3A13Z
+- NASA PDS Geosciences Node, Mars Exploration Program https://pds-geosciences.wustl.edu/missions/mep/index.htm
 - Microsoft Planetary Computer (Copernicus DEM GLO-30, Sentinel-2 L2A) https://planetarycomputer.microsoft.com
 - Earth Search STAC (Element 84) https://earth-search.aws.element84.com/v1 · INGEMMET https://geocatmin.ingemmet.gob.pe

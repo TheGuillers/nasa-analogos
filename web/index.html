@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-<link rel="stylesheet" href="styles.css?v=20261118">
+<link rel="stylesheet" href="styles.css?v=20261121">
 </head>
 <body>
 <div class="shell">
@@ -28,6 +28,8 @@
 
     <label class="lbl" style="display:flex;gap:.5em;align-items:center;margin-top:12px"><input type="checkbox" id="only_piura"> Show only Piura</label>
     <p class="hint" id="piura_hint" hidden></p>
+    <label class="lbl" for="gibs_date" style="margin-top:12px">NASA Worldview imagery date</label>
+    <input type="date" id="gibs_date">
 
     <details class="box">
       <summary>Model parameters</summary>
@@ -152,6 +154,10 @@
             ripple range from Baker et al. (2018).</p></div>
         <div class="tbl-wrap"><table id="cmp_table" class="data"></table></div>
       </div>
+      <p class="h">NASA Earthdata over Médano Blanco</p>
+      <div id="nasa_twin"></div>
+      <p class="h">Mars Exploration Program sites in the PDS archive</p>
+      <div id="pds_block" class="tbl-wrap"></div>
       <div id="s2_block"></div>
       <div class="note"><b>Honest framing.</b> The analogy is morphological and process-based (barchans, steady wind,
         loose sand), not mineralogical: Bagnold sand is basaltic and olivine-rich, Médano Blanco is quartz sand
@@ -187,11 +193,13 @@
           altitude and a regional slope over a ~4 km window (5×5 grid, ~1 km spacing); used for sites you add here.</li>
         <li><b>NASA Mars Trek</b> WMTS tiles: Viking MDIM 2.1, MOLA colour hillshade (463 m), MRO CTX Gale mosaic,
           MRO HiRISE Curiosity roving-site mosaic, HiRISE 1 m DEM of Gale.</li>
-        <li><b>NASA GIBS / Worldview</b>: MODIS Terra true-colour tiles as an Earth overlay. <a href="https://worldview.earthdata.nasa.gov/index.html?v=-504.22662231419474,-190.8513647590744,359.77337768580526,219.7736352409256&amp;t=2026-09-07-T01%3A58%3A13Z" target="_blank" rel="noopener">Open NASA Worldview</a>.</li>
-        <li><b>NASA Earthdata Search</b>: catalogue of NASA Earth-observation datasets (DAACs) to find and download
-          granules over the Médano Blanco / Sechura area.
+        <li><b>NASA GIBS / Worldview</b>: MODIS Terra, VIIRS NOAA-21 and VIIRS SNPP true-colour tiles as Earth overlays, with a date control in the side panel. <a href="https://worldview.earthdata.nasa.gov/index.html?v=-504.22662231419474,-190.8513647590744,359.77337768580526,219.7736352409256&amp;t=2026-09-07-T01%3A58%3A13Z" target="_blank" rel="noopener">Open NASA Worldview</a>.</li>
+        <li><b>NASA Earthdata Search</b>: catalogue of NASA Earth-observation datasets. The CMR API is queried live for the collections and
+          granules (MODIS, Harmonized Landsat/Sentinel-2) that cover each site.
           <a href="https://search.earthdata.nasa.gov/search?q=sechura&amp;lat=-5.940280099950111&amp;long=-80.54643451544943&amp;overlays=bordersRoads%2Ccoastlines%2CplaceLabels&amp;zoom=10.81509069402037" target="_blank" rel="noopener">Open the Sechura search</a>.</li>
-        <li><b>NASA PDS Geosciences Node: Mars Exploration Rovers</b> (Spirit and Opportunity) data archive, as a source of rover-scale Mars surface data for the analog comparison. <a href="https://pds-geosciences.wustl.edu/missions/mep/index.htm" target="_blank" rel="noopener">Open the MER archive</a>.</li>
+        <li><b>NASA PDS Geosciences Node, Mars Exploration Program</b> (MSL Curiosity, MER Spirit and Opportunity, Mars 2020):
+          the Orbital Data Explorer is queried live for HiRISE DTMs and images around each rover site (Mars twin tab).
+          <a href="https://pds-geosciences.wustl.edu/missions/mep/index.htm" target="_blank" rel="noopener">Open the portal</a>.</li>
         <li><b>Copernicus Sentinel-2 L2A</b> via Planetary Computer (Earth Search on AWS as fallback catalogue): cloud-free
           scenes 2017–2026 to measure the dune's migration by masked cross-correlation (see the Mars twin tab).</li>
         <li><b>INGEMMET GEOCATMIN</b>: integrated 1:100k geology and geomorphology, as WMS overlays and point queries.</li>
@@ -217,7 +225,7 @@
           <a href="https://trek.nasa.gov/mars">trek.nasa.gov/mars</a> · NASA GIBS, <a href="https://gibs.earthdata.nasa.gov">gibs.earthdata.nasa.gov</a></li>
         <li>NASA Worldview, <a href="https://worldview.earthdata.nasa.gov/index.html?v=-504.22662231419474,-190.8513647590744,359.77337768580526,219.7736352409256&amp;t=2026-09-07-T01%3A58%3A13Z" target="_blank" rel="noopener">worldview.earthdata.nasa.gov</a></li>
         <li>NASA Earthdata Search, <a href="https://search.earthdata.nasa.gov/search?q=sechura&amp;lat=-5.940280099950111&amp;long=-80.54643451544943&amp;overlays=bordersRoads%2Ccoastlines%2CplaceLabels&amp;zoom=10.81509069402037" target="_blank" rel="noopener">search.earthdata.nasa.gov (Sechura)</a></li>
-        <li>NASA PDS Geosciences Node, Mars Exploration Rovers archive, <a href="https://pds-geosciences.wustl.edu/missions/mep/index.htm" target="_blank" rel="noopener">pds-geosciences.wustl.edu/missions/mep</a></li>
+        <li>NASA PDS Geosciences Node, Mars Exploration Program, <a href="https://pds-geosciences.wustl.edu/missions/mep/index.htm" target="_blank" rel="noopener">pds-geosciences.wustl.edu/missions/mep</a></li>
         <li>Microsoft Planetary Computer (Copernicus DEM GLO-30, Sentinel-2 L2A), <a href="https://planetarycomputer.microsoft.com">planetarycomputer.microsoft.com</a></li>
         <li>SRTM (NASA/NGA) and ASTER GDEM (NASA/METI), served by <a href="https://www.opentopodata.org">OpenTopoData</a></li>
         <li>Earth Search STAC (Element 84), <a href="https://earth-search.aws.element84.com/v1">earth-search.aws.element84.com</a></li>
@@ -234,6 +242,7 @@
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
-<script src="app.js?v=20261118"></script>
+<script src="nasa.js?v=20261121"></script>
+<script src="app.js?v=20261121"></script>
 </body>
 </html>
