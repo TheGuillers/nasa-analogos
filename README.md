@@ -1,4 +1,111 @@
-# ALTERGEA · Análogos terrestres para la Luna y Marte
+# ALTERGEA · Earth analogues for the Moon and Mars
+
+*[Leer en español](#español)*
+
+ALTERGEA team · NASA Space Apps 2026, Piura (Peru).
+App: [app.py](app.py) (Streamlit). Our own measurement: [tools/sentinel_migration.py](tools/sentinel_migration.py).
+
+## The challenge
+
+Find places and processes on Earth that can serve as analogues to prepare permanent lunar bases and Mars exploration
+sites, using open NASA data, explaining what makes the analogy strong, where it breaks down and how it helps.
+
+## Our answer
+
+1. **A similarity scoring system** that compares 14 sites around the world (6 in Peru) against reference conditions for
+   Mars and the Moon, using NASA data: NASA POWER climate (precipitation, daily temperature range, albedo, 10 m wind)
+   and SRTM/ASTER topography. Weights and thresholds are explicit and adjustable in the app.
+2. **One proposed analogue, characterized in detail:** the **Médano Blanco dune field (Sechura, Piura)** against the
+   **Bagnold Dunes of Gale crater**, studied in situ by the Curiosity rover (2015–2017). The app shows both sides in
+   twin maps: Sentinel-2, Esri and MODIS (NASA GIBS) on Earth; CTX and HiRISE mosaics and the 1 m HiRISE DEM from
+   NASA Mars Trek on Mars.
+3. **Our own measurement of dune migration** from Sentinel-2 imagery (2018–2026) taken from Microsoft Planetary
+   Computer, compared with the MINAM figure (Google Earth, 2006–2022) and with Bagnold migration measured with HiRISE.
+
+## Médano Blanco ↔ Bagnold
+
+| | Médano Blanco (Sechura) | Bagnold / Namib dune (Gale) |
+|---|---|---|
+| Dune type | Active barchan, ~16.4 ha (MINAM 2022) | Active barchans and linear dunes (Bridges et al. 2018) |
+| Measured migration | Dune body < 1 m/yr, 0.9 ± 0.1 in the current run (Sentinel-2 2018–2026 via Planetary Computer, ALTERGEA); lee side 4–6 m/yr according to MINAM (Google Earth 2006–2022) | ~0.4 m/Earth-year (Silvestro et al. 2013, HiRISE); ripples up to 1.7 m/yr |
+| Composition | Light quartz sand, INGEMMET unit Q-eo "Aeolian deposit" | Dark basaltic sand with olivine (ChemCam, APXS) |
+| Position | −5.554, −80.757 (UTM 17M 526906 E / 9386090 S) | Namib: −4.680, 137.367 (rover, sol 1192) |
+| Topography | Copernicus DEM GLO-30 via Planetary Computer (slope and roughness at 30 m); SRTM 30 m | HiRISE 1 m DTM (Gale_DEM_SMG_1m); MOLA at 463 m is too coarse |
+
+**What makes the analogy strong.** The same shape and the same process: active barchans shaped by a persistent wind,
+loose sand that traps wheels, slip faces and metre-scale ripples. On both bodies the migration is measured, not
+assumed.
+
+**Where it breaks down.** Composition (quartz versus basalt and olivine), atmosphere (1 bar versus 6 mbar: on Mars
+sand moves rarely and roughly ten times more slowly), gravity and the absence of vegetation. Gale is a rover science
+site, not a permanent base site. Médano Blanco is a protected tourist site: MINAM considers it vulnerable to intensive
+use, so any training field must be coordinated with the community and the municipality.
+
+**How it helps.** A test bed for rover mobility and recovery from sand traps (the failure mode that ended Spirit's
+mission in 2009), route planning between dunes, change-detection methods for dust and bedforms, and calibration of
+orbital measurements against ground truth, 50 km from Piura with documented access and infrastructure.
+
+## Data used
+
+| Source | Use |
+|---|---|
+| NASA POWER | Climatological data per site: `PRECTOTCORR`, `T2M_RANGE`, `ALLSKY_SRF_ALB`, `WS10M`, `WS10M_MAX` |
+| Copernicus DEM GLO-30 (ESA) via **Microsoft Planetary Computer** | Elevation, mean slope at 30 m and roughness (detrended surface deviation) over a ~3 km window. This is the slope the model uses, at a resolution the Mars side (HiRISE DTM resampled to 30 m) can match |
+| SRTM (NASA/NGA), ASTER GDEM (NASA/METI) | Elevation and regional slope (5×5 point window at 1 km), via OpenTopoData; fallback and source for user-added sites in the static web version |
+| Copernicus Sentinel-2 L2A via **Planetary Computer** (Earth Search on AWS as fallback) | 2017–2026 series at 10 m to measure dune migration |
+| NASA Mars Trek (WMTS) | Viking MDIM 2.1, MOLA 463 m, Gale CTX mosaic, Curiosity HiRISE mosaic, 1 m HiRISE DEM |
+| NASA GIBS / Worldview | MODIS Terra true colour as the Earth base layer |
+| INGEMMET GEOCATMIN | Integrated 1:100k geology and geomorphology (WMS and point query) |
+| MINAM / SINIA (2022) | Diagnosis and microzoning of the Médano Blanco dune: type, area, migration, restrictions |
+
+## Sentinel-2 measurement: method and result
+
+**Method.** From scenes with less than 4 % cloud since 2017, up to 45 spread over time are selected, and those with
+clouds or shadows (SCL mask) inside a ~2 km window are discarded. A crop of the blue, green and red bands at 10 m is
+read. In the reference scene (2019-03-31) the dune is delineated with an Otsu threshold and morphological opening, and
+that silhouette (dilated by 30 m) is the template. In each later scene the template is located by *masked* normalized
+cross-correlation, meaning only the dune's pixels count, so the surrounding dry forest, tracks and fixed sand do not
+anchor the correlation. The peak is refined to sub-pixel precision and the speed is the slope of the linear fit of
+displacement against time.
+
+**Result (42 Planetary Computer scenes, 2018-01-30 to 2026-08-21).** The dune body moves
+**0.9 ± 0.1 m/yr** toward the west-northwest, with a scatter of 1.8 m around the fit. An earlier run with the Earth
+Search catalogue (43 scenes, reference 2019-03-31) gave 0.3 ± 0.1 m/yr: the figure depends on the reference scene and on
+which scenes pass the cloud filter, so the honest value is **less than 1 m/yr**. At Sentinel-2 resolution the barchan is
+essentially stationary, far below the 4–6 m/yr that the MINAM diagnosis attributes to the lee side from Google Earth
+(2006–2022). The two figures do not measure the same thing: MINAM's describes the edge of the slip face and the arms,
+where sandboarding and tubular traffic are concentrated, and the georeferencing of historical Google Earth images can
+also shift by several metres between dates. Our measurement follows the full shape of the dune, which barely changes
+position between 2019 and 2026. This agrees with MINAM's own observation that the dune is surrounded by dry forest that
+slows the wind and the sand. In terms of the analogue, Médano Blanco resembles Bagnold more than the 6 m/yr figure
+suggested: both fields are active at the scale of ripples and slip faces, but their bodies migrate less than 1 m/yr.
+
+Limitations: 10 m per pixel limits detection to cumulative displacements of ~2 m; the brightness-based silhouette
+varies with soil moisture and season (which is why the area fluctuates between 10 and 21 ha), although masked
+correlation is robust to this; an analysis with PlanetScope (3 m) or drone orthophotos would resolve the motion of the
+lee side.
+
+## Use of AI
+
+Claude (Anthropic) was used as a programming assistant to write and debug code. The idea, the choice of sites, the
+model design and the interpretation are the team's.
+
+## References
+
+- MINAM / SINIA. *Diagnóstico y microzonificación del ámbito de uso turístico de la duna Médano Blanco, Sechura, Piura* (2022).
+  https://sinia.minam.gob.pe/documentos/diagnostico-microzonificacion-ambito-uso-turistico-duna-medano
+- Bridges, N. T. et al. (2018). The MSL Bagnold Dunes Campaign, Phase I. *JGR Planets*. doi:10.1002/2017JE005401
+- Silvestro, S. et al. (2013). Pervasive aeolian activity along rover Curiosity's traverse in Gale Crater. *Geology* 41, 483–486.
+- Baker, M. M. et al. (2018). The Bagnold Dunes in southern summer. *GRL*. doi:10.1029/2018GL079040
+- NASA POWER https://power.larc.nasa.gov · NASA Mars Trek https://trek.nasa.gov/mars · NASA GIBS https://gibs.earthdata.nasa.gov
+- Microsoft Planetary Computer (Copernicus DEM GLO-30, Sentinel-2 L2A) https://planetarycomputer.microsoft.com
+- Earth Search STAC (Element 84) https://earth-search.aws.element84.com/v1 · INGEMMET https://geocatmin.ingemmet.gob.pe
+
+---
+
+# Español
+
+*[Read in English](#altergea--earth-analogues-for-the-moon-and-mars)*
 
 Equipo ALTERGEA · NASA Space Apps 2026, Piura (Perú).
 App: [app.py](app.py) (Streamlit). Medición propia: [tools/sentinel_migration.py](tools/sentinel_migration.py).
@@ -83,50 +190,6 @@ de deslizamiento, pero sus cuerpos migran menos de 1 m/año.
 Limitaciones: 10 m por píxel limita la detección a desplazamientos de ~2 m acumulados; la silueta por brillo varía con
 la humedad del suelo y la estación (por eso el área oscila entre 10 y 21 ha), aunque la correlación enmascarada es
 robusta a ello; un análisis con PlanetScope (3 m) o con ortofotos de dron resolvería el movimiento del sotavento.
-
-## Dos versiones de la app
-
-| | Streamlit ([app.py](app.py)) | Web estática ([web/](web/)) |
-|---|---|---|
-| Para | Trabajo local y Streamlit Community Cloud | Vercel, Netlify, GitHub Pages o cualquier hosting estático |
-| Datos de sitios | Precalculados por defecto (`web/data/sites.json`); interruptor "Refresh live" para consultar NASA POWER, OpenTopoData y Planetary Computer en vivo | Precalculados en `web/data/sites.json` con `tools/export_sites.py`; los sitios que añade el usuario se consultan en vivo desde el navegador (POWER y SRTM) |
-| Modelo | Python | JavaScript, mismas fórmulas y pesos |
-| Mapas de Marte, GIBS, INGEMMET | Sí | Sí, directo desde el navegador (INGEMMET por JSONP) |
-| Fundido Tierra/Marte | Sí, en el servidor | Sí, en `<canvas>` |
-
-### Desplegar la web en Vercel
-
-El repo ya incluye [vercel.json](vercel.json), que publica la carpeta `web/` tal cual, sin build.
-
-1. En [vercel.com/new](https://vercel.com/new) importa el repositorio `TheGuillers/nasa-analogos`.
-2. Deja el *Framework Preset* en "Other"; Vercel lee `vercel.json` y usa `web` como directorio de salida. Pulsa **Deploy**.
-3. Cada push a `main` redespliega. Si cambian los datos, vuelve a ejecutar `tools/export_sites.py` antes del push.
-
-Para probarla en local:
-
-```bash
-.venv/Scripts/python.exe -m http.server 8080 --directory web
-```
-
-## Cómo ejecutar la versión Streamlit
-
-```bash
-python -m venv .venv
-.venv/Scripts/python.exe -m pip install -r requirements.txt
-.venv/Scripts/python.exe -m streamlit run app.py
-```
-
-Regenerar los datos de la web estática (unos 70 s, consulta NASA POWER y OpenTopoData):
-
-```bash
-.venv/Scripts/python.exe tools/export_sites.py
-```
-
-La medición Sentinel-2 (opcional, necesita `rasterio` y `scipy`):
-
-```bash
-.venv/Scripts/python.exe tools/sentinel_migration.py
-```
 
 ## Uso de IA
 
