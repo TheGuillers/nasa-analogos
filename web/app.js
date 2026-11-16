@@ -3,12 +3,12 @@
 'use strict';
 
 // ---------- constants ----------
-const NAVY = '#0d1b5e', SKY = '#1fa2e8', RED = '#c8102e', MUTED = '#5f6b85';
-const SCALE = ['#d6dce8', '#8fbfe3', '#2f7fc1', NAVY];              // Weak · Moderate · Strong · Prime
-const BRAND = [NAVY, '#2f7fc1', '#8fbfe3', RED, '#8a93ad'];
-const FONT = { family: 'IBM Plex Sans, Segoe UI, system-ui, sans-serif', color: '#1b2340' };
-const LABELS = { aridity: 'Aridity', thermal: 'Thermal range', albedo: 'Albedo match', slope: 'Slope',
-  altitude: 'Altitude', wind: 'Wind (aeolian)' };
+const NAVY = '#5cc8ff', SKY = '#5cc8ff', RED = '#ff5d4a', MUTED = '#9aa7c9';
+const SCALE = ['#4a5578', '#4f8cd8', '#2fd1c5', '#ffa24d'];              // Weak · Moderate · Strong · Prime
+const BRAND = [NAVY, '#ffa24d', '#a78bfa', '#2fd1c5', '#8a93ad'];
+const FONT = { family: 'Inter, Segoe UI, system-ui, sans-serif', color: '#dfe6f8' };
+const LABELS = { aridity: tr('Aridity', 'Aridez'), thermal: tr('Thermal range', 'Rango térmico'), albedo: tr('Albedo match', 'Albedo'),
+  slope: tr('Slope', 'Pendiente'), altitude: tr('Altitude', 'Altitud'), wind: tr('Wind (aeolian)', 'Viento (eólico)') };
 const KEYS = Object.keys(LABELS);
 const DEFAULT_W = {
   Mars: { aridity: .25, thermal: .20, albedo: .15, slope: .15, altitude: .10, wind: .15 },
@@ -28,16 +28,21 @@ const ESRI_TOPO = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_To
 const ESRI_ATTR = 'Esri, Maxar, Earthstar Geographics';
 const ING_WMS = svc => `https://geocatmin.ingemmet.gob.pe/arcgis/services/${svc}/MapServer/WMSServer`;
 const ING_REST = svc => `https://geocatmin.ingemmet.gob.pe/arcgis/rest/services/${svc}/MapServer/identify`;
-const ING_SERVICES = { 'Geology 1:100k (integrated)': ['SERV_GEOLOGIA_100K_INTEGRADA', '6'],
-  'Geomorphology': ['SERV_GEOMORFOLOGIA', 'Geomorfologia'] };
-const REF = {
+const ING_SERVICES = { [tr('Geology 1:100k (integrated)', 'Geología 1:100k (integrada)')]: ['SERV_GEOLOGIA_100K_INTEGRADA', '6'],
+  [tr('Geomorphology', 'Geomorfología')]: ['SERV_GEOMORFOLOGIA', 'Geomorfologia'] };
+const REF = LANG === 'es' ? {
+  Mars: { aridity: '0 mm/año, sin lluvia', thermal: '≈ 70 °C de rango diurno (REMS, Gale)', albedo: t => `${t} (regional)`,
+    slope: s => `≤ ${s}° apto para rover`, altitude: 'presión superficial de 6–7 mbar (la altitud es el equivalente en la Tierra)',
+    wind: 'típico 5–10 m/s, ráfagas > 15 (REMS)' },
+  Moon: { aridity: 'sin atmósfera', thermal: '≈ 250 °C de rango diurno (Diviner, ecuador)', albedo: t => `${t}`,
+    slope: s => `≤ ${s}° apto para módulo de aterrizaje`, altitude: 'vacío (la altitud es el equivalente en la Tierra)', wind: 'ninguno: peso 0' } } : {
   Mars: { aridity: '0 mm/yr, no rain', thermal: '≈ 70 °C diurnal (REMS, Gale)', albedo: t => `${t} (regional)`,
     slope: s => `≤ ${s}° rover-safe`, altitude: '6–7 mbar surface pressure (altitude is the Earth proxy)',
     wind: '5–10 m/s typical, gusts > 15 (REMS)' },
   Moon: { aridity: 'no atmosphere', thermal: '≈ 250 °C diurnal (Diviner, equator)', albedo: t => `${t}`,
     slope: s => `≤ ${s}° lander-safe`, altitude: 'vacuum (altitude is the Earth proxy)', wind: 'none: weight 0' } };
-const FMT = { aridity: r => `${Math.round(r.precip_mm)} mm/yr`, thermal: r => `${r.temp_range_c} °C`,
-  albedo: r => `${r.albedo}`, slope: r => isNum(r.slope30_deg) ? `${r.slope30_deg}° (30 m DEM)` : `${r.slope_deg}° (1 km SRTM)`,
+const FMT = { aridity: r => `${Math.round(r.precip_mm)} ${tr('mm/yr', 'mm/año')}`, thermal: r => `${r.temp_range_c} °C`,
+  albedo: r => `${r.albedo}`, slope: r => isNum(r.slope30_deg) ? `${r.slope30_deg}° (${tr('30 m DEM', 'DEM 30 m')})` : `${r.slope_deg}° (${tr('1 km SRTM', 'SRTM 1 km')})`,
   altitude: r => `${Math.round(r.altitude_m)} m`,
   wind: r => `${r.wind10m_ms} m/s` };
 
@@ -71,9 +76,9 @@ function similarity(c, w) {
   for (const k of KEYS) if (!isNaN(c[k])) { num += w[k] * c[k]; den += w[k]; }
   return den > 0 ? Math.round(num / den * 1000) / 1000 : NaN;
 }
-const tier = s => s >= .75 ? 'Prime analog' : s >= .6 ? 'Strong' : s >= .45 ? 'Moderate' : 'Weak';
+const tier = s => s >= .75 ? tr('Prime analog', 'Análogo principal') : s >= .6 ? tr('Strong', 'Fuerte') : s >= .45 ? tr('Moderate', 'Moderado') : tr('Weak', 'Débil');
 const color = s => s >= .75 ? SCALE[3] : s >= .6 ? SCALE[2] : s >= .45 ? SCALE[1] : SCALE[0];
-const mtext = s => s >= .6 ? '#ffffff' : NAVY;
+const mtext = s => s >= .6 ? '#06122b' : '#ffffff';
 
 function compute() {
   const W = Object.values(S.W).reduce((a, b) => a + b, 0) > 0 ? S.W : DEFAULT_W[S.target];
@@ -92,17 +97,16 @@ function compute() {
 // ---------- shared UI bits ----------
 const stat = (l, v, s) => `<div class="stat"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
 const pbar = (pct, w = 90) => `<span class="bar-bg" style="width:${w}px"><span class="bar" style="width:${Math.max(0, Math.min(100, pct))}%"></span></span>`;
-const pct = v => isNaN(v) ? '<span class="spin">n/a</span>' : `${pbar(v * 100)}${Math.round(v * 100)} %`;
+const pct = v => isNaN(v) ? `<span class="spin">${tr('n/a', 'n/d')}</span>` : `${pbar(v * 100)}${Math.round(v * 100)} %`;
 
 function renderStats() {
-  const v = S.res; if (!v.length) { $('#stats').innerHTML = '<p class="err">No site data.</p>'; return; }
+  const v = S.res; if (!v.length) { $('#stats').innerHTML = `<p class="err">${tr('No site data.', 'Sin datos de sitios.')}</p>`; return; }
   const best = v[0], mean = v.reduce((a, r) => a + r.score, 0) / v.length;
   const driest = [...v].sort((a, b) => a.precip_mm - b.precip_mm)[0];
-  $('#stats').innerHTML = stat('Best analog', best.site, `${best.country} · score ${best.score.toFixed(3)}`) +
-    stat('Mean score', mean.toFixed(2), `across ${v.length} sites with data`) +
-    stat('Prime analogs', v.filter(r => r.score >= .75).length, 'score ≥ 0.75') +
-    stat('Driest site', driest.site, `${Math.round(driest.precip_mm)} mm/yr`);
-  $('#m_target').textContent = S.target; $('#m_n').textContent = v.length;
+  $('#stats').innerHTML = stat(tr('Best analog', 'Mejor análogo'), best.site, `${best.country} · ${tr('score', 'puntaje')} ${best.score.toFixed(3)}`) +
+    stat(tr('Mean score', 'Puntaje medio'), mean.toFixed(2), tr(`across ${v.length} sites with data`, `en ${v.length} sitios con datos`)) +
+    stat(tr('Prime analogs', 'Análogos principales'), v.filter(r => r.score >= .75).length, tr('score ≥ 0.75', 'puntaje ≥ 0.75')) +
+    stat(tr('Driest site', 'Sitio más árido'), driest.site, `${Math.round(driest.precip_mm)} ${tr('mm/yr', 'mm/año')}`);
 }
 
 // ---------- sidebar ----------
@@ -110,7 +114,7 @@ function buildSidebar() {
   const wdiv = $('#weights'); wdiv.innerHTML = '';
   for (const k of KEYS) {
     const row = el('div', { className: 'w-row' });
-    row.innerHTML = `<label class="lbl" style="margin:6px 0 0">${LABELS[k]} weight</label><output id="ow_${k}">${S.W[k].toFixed(2)}</output>
+    row.innerHTML = `<label class="lbl" style="margin:6px 0 0">${tr(LABELS[k] + ' weight', 'Peso: ' + LABELS[k])}</label><output id="ow_${k}">${S.W[k].toFixed(2)}</output>
       <input type="range" id="w_${k}" min="0" max="1" step="0.05" value="${S.W[k]}" style="grid-column:1/3">`;
     wdiv.appendChild(row);
     row.querySelector('input').addEventListener('input', e => { S.W[k] = +e.target.value; $(`#ow_${k}`).textContent = S.W[k].toFixed(2); update(); });
@@ -145,10 +149,10 @@ function setTarget(t, resetW) {
 function persistCustom() { try { localStorage.setItem('altergea_custom', JSON.stringify(S.custom)); } catch (e) { /* private mode */ } }
 
 async function addCustomSite() {
-  const name = $('#c_name').value.trim() || 'My site', lat = +$('#c_lat').value, lon = +$('#c_lon').value;
+  const name = $('#c_name').value.trim() || tr('My site', 'Mi sitio'), lat = +$('#c_lat').value, lon = +$('#c_lon').value;
   const st = $('#add_status'); const btn = $('#add_site'); btn.disabled = true;
-  st.textContent = 'Fetching NASA POWER climatology…';
-  const row = { site: name, country: 'Custom', type: 'User-defined', lat, lon, precip_mm: NaN, temp_range_c: NaN, albedo: NaN,
+  st.textContent = tr('Fetching NASA POWER climatology…', 'Consultando la climatología de NASA POWER…');
+  const row = { site: name, country: tr('Custom', 'Propio'), type: tr('User-defined', 'Definido por el usuario'), lat, lon, precip_mm: NaN, temp_range_c: NaN, albedo: NaN,
     wind10m_ms: NaN, wind10m_max_ms: NaN, altitude_m: NaN, slope_deg: NaN, roughness_m: NaN };
   try {
     const u = `https://power.larc.nasa.gov/api/temporal/climatology/point?parameters=PRECTOTCORR,T2M_RANGE,ALLSKY_SRF_ALB,WS10M,WS10M_MAX&community=RE&longitude=${lon}&latitude=${lat}&format=JSON`;
@@ -156,8 +160,8 @@ async function addCustomSite() {
     const ann = k => { const v = p[k] && p[k].ANN; return (v == null || v <= -900) ? NaN : v; };
     row.precip_mm = +(ann('PRECTOTCORR') * 365).toFixed(1); row.temp_range_c = +ann('T2M_RANGE').toFixed(1);
     row.albedo = +ann('ALLSKY_SRF_ALB').toFixed(3); row.wind10m_ms = +ann('WS10M').toFixed(2); row.wind10m_max_ms = +ann('WS10M_MAX').toFixed(2);
-  } catch (e) { st.textContent = 'NASA POWER did not answer; climate left empty. '; }
-  st.textContent += ' Fetching SRTM elevation…';
+  } catch (e) { st.textContent = tr('NASA POWER did not answer; climate left empty. ', 'NASA POWER no respondió; el clima quedó vacío. '); }
+  st.textContent += tr(' Fetching SRTM elevation…', ' Consultando la elevación SRTM…');
   try {
     const step = 0.01, off = [-2, -1, 0, 1, 2];
     const pts = off.flatMap(a => off.map(b => `${(lat + a * step).toFixed(5)},${(lon + b * step).toFixed(5)}`)).join('|');
@@ -179,9 +183,9 @@ async function addCustomSite() {
       const sd = Math.sqrt(g.reduce((a, v) => a + (v - mean) ** 2, 0) / g.length);
       row.altitude_m = Math.round(Z(2, 2)); row.slope_deg = +(sl / 25).toFixed(2); row.roughness_m = +sd.toFixed(1);
     }
-  } catch (e) { st.textContent += ' Elevation service did not answer.'; }
+  } catch (e) { st.textContent += tr(' Elevation service did not answer.', ' El servicio de elevación no respondió.'); }
   S.custom = S.custom.filter(r => r.site !== name); S.custom.push(row); persistCustom();
-  st.textContent = `${name} added.`; btn.disabled = false; update();
+  st.textContent = tr(`${name} added.`, `${name} agregado.`); btn.disabled = false; update();
 }
 
 // ---------- tabs ----------
@@ -190,6 +194,7 @@ function buildTabs() {
   document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => showTab(t.dataset.tab)));
 }
 function showTab(name) {
+  window.__tab = name;
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('is-on', t.dataset.tab === name));
   document.querySelectorAll('.panel').forEach(p => p.classList.toggle('is-on', p.id === `tab-${name}`));
   if (name === 'twin') { ensureTwin(); setTimeout(() => { maps.earth.invalidateSize(); maps.mars.invalidateSize(); }, 50); }
@@ -209,18 +214,18 @@ function buildMap() {
   const overlays = { ...gibsOverlays() };
   for (const [label, [svc, layer]] of Object.entries(ING_SERVICES))
     overlays[`INGEMMET · ${label}`] = L.tileLayer.wms(ING_WMS(svc), { layers: layer, format: 'image/png', transparent: true, version: '1.1.1', opacity: .6 });
-  L.control.layers({ 'Satellite': sat, 'Street map': osm, 'Topographic': topo }, overlays).addTo(m);
+  L.control.layers({ [tr('Satellite', 'Satélite')]: sat, [tr('Street map', 'Mapa de calles')]: osm, [tr('Topographic', 'Topográfico')]: topo }, overlays).addTo(m);
   markerLayer = L.layerGroup().addTo(m);
   maps.main = m;
   // "All sites" control: shown while a site is focused, returns to the overview in one click
   const Back = L.Control.extend({ onAdd() {
-    const b = L.DomUtil.create('button', 'map-back'); b.type = 'button'; b.textContent = '← All sites';
-    b.title = 'Back to the overview'; L.DomEvent.disableClickPropagation(b);
+    const b = L.DomUtil.create('button', 'map-back'); b.type = 'button'; b.textContent = tr('← All sites', '← Todos los sitios');
+    b.title = tr('Back to the overview', 'Volver a la vista general'); L.DomEvent.disableClickPropagation(b);
     L.DomEvent.on(b, 'click', e => { L.DomEvent.stop(e); setFocus(null); }); return b; } });
   maps.back = new Back({ position: 'topleft' }); maps.backOn = false;
   $('#topn').addEventListener('input', e => { S.topn = +e.target.value; $('#o_topn').textContent = S.topn; renderMap(); });
   $('#focus_sel').addEventListener('change', e => setFocus(e.target.value || null));
-  $('#legend').innerHTML = [['Prime ≥ 0.75', SCALE[3]], ['Strong ≥ 0.60', SCALE[2]], ['Moderate ≥ 0.45', SCALE[1]], ['Weak', SCALE[0]]]
+  $('#legend').innerHTML = [[tr('Prime ≥ 0.75', 'Principal ≥ 0.75'), SCALE[3]], [tr('Strong ≥ 0.60', 'Fuerte ≥ 0.60'), SCALE[2]], [tr('Moderate ≥ 0.45', 'Moderado ≥ 0.45'), SCALE[1]], [tr('Weak', 'Débil'), SCALE[0]]]
     .map(([t, c]) => `<span><i class="dot" style="background:${c}"></i>${t}</span>`).join('');
 }
 function renderMap() {
@@ -232,16 +237,16 @@ function renderMap() {
     const icon = L.divIcon({ className: '', iconSize: [size, size], iconAnchor: [size / 2, size / 2],
       html: `<div class="marker-pin" style="width:${size}px;height:${size}px;background:${color(r.score)};color:${mtext(r.score)}">${r.rank}</div>` });
     const mk = L.marker([r.lat, r.lon], { icon, title: `#${r.rank} ${r.site}: ${r.score}` }).addTo(markerLayer);
-    mk.bindPopup(`<b>#${r.rank} ${r.site}</b> (${r.country})<br>${r.type}<br>${S.target} similarity: <b>${r.score}</b> · ${r.tier}<br>
-      Precip.: ${r.precip_mm} mm/yr · Range: ${r.temp_range_c} °C · Wind: ${r.wind10m_ms} m/s<br>
-      Albedo: ${r.albedo} · Alt.: ${Math.round(r.altitude_m)} m · Slope: ${slopeOf(r)}°`, { maxWidth: 300 });
+    mk.bindPopup(`<b>#${r.rank} ${r.site}</b> (${r.country})<br>${r.type}<br>${tr(S.target, S.target === 'Mars' ? 'Marte' : 'Luna')} ${tr('similarity', 'similitud')}: <b>${r.score}</b> · ${r.tier}<br>
+      ${tr('Precip.', 'Precip.')}: ${r.precip_mm} ${tr('mm/yr', 'mm/año')} · ${tr('Range', 'Rango')}: ${r.temp_range_c} °C · ${tr('Wind', 'Viento')}: ${r.wind10m_ms} m/s<br>
+      Albedo: ${r.albedo} · ${tr('Alt.', 'Alt.')}: ${Math.round(r.altitude_m)} m · ${tr('Slope', 'Pendiente')}: ${slopeOf(r)}°`, { maxWidth: 300 });
     mk.on('click', () => setFocus(r.site));
   });
   const sel = $('#focus_sel'); const cur = S.focus || '';
-  sel.innerHTML = '<option value="">— none —</option>' + v.map(r => `<option value="${r.site}" ${r.site === cur ? 'selected' : ''}>${r.site}</option>`).join('');
-  $('#top_title').textContent = `Top sites for ${S.target}`;
-  $('#top_table').innerHTML = '<tr><th>rank</th><th>site</th><th>score</th></tr>' +
-    v.slice(0, n).map(r => `<tr data-s="${r.site}" class="${r.site === S.focus ? 'is-on' : ''}" title="Click to zoom to this site"><td>${r.rank}</td><td>${r.site}</td><td>${pbar(r.score * 100, 70)}${r.score.toFixed(3)}</td></tr>`).join('');
+  sel.innerHTML = `<option value="">${tr('— none —', '— ninguno —')}</option>` + v.map(r => `<option value="${r.site}" ${r.site === cur ? 'selected' : ''}>${r.site}</option>`).join('');
+  $('#top_title').textContent = tr(`Top sites for ${S.target}`, `Mejores sitios para ${S.target === 'Mars' ? 'Marte' : 'la Luna'}`);
+  $('#top_table').innerHTML = `<tr><th>${tr('rank', 'pos.')}</th><th>${tr('site', 'sitio')}</th><th>${tr('score', 'puntaje')}</th></tr>` +
+    v.slice(0, n).map(r => `<tr data-s="${r.site}" class="${r.site === S.focus ? 'is-on' : ''}" title="${tr('Click to zoom to this site', 'Clic para acercar a este sitio')}"><td>${r.rank}</td><td>${r.site}</td><td>${pbar(r.score * 100, 70)}${r.score.toFixed(3)}</td></tr>`).join('');
   $('#top_table').querySelectorAll('tr[data-s]').forEach(tr => tr.addEventListener('click', () => setFocus(tr.dataset.s === S.focus ? null : tr.dataset.s)));
 }
 function setFocus(site) {
@@ -297,21 +302,21 @@ async function renderFocus() {
   const box = $('#focus'); if (!S.focus) { box.hidden = true; box.innerHTML = ''; return; }
   const r = S.res.find(x => x.site === S.focus); if (!r) { box.hidden = true; return; }
   box.hidden = false;
-  box.innerHTML = `<h3 style="margin-top:0">Surface comparison · ${r.site} ↔ Mars <button class="btn-link" id="focus_back">← All sites</button></h3>
-    <p class="hint">Both patches cover about 3.8 km at ~5 m per pixel: Esri imagery on Earth, the MRO HiRISE mosaic of the
-    Curiosity roving site (NASA Mars Trek) on Mars. Slide to fade one surface into the other.</p>
-    <div class="row"><div><label class="lbl" for="mars_ref">Mars reference patch</label><select id="mars_ref">${Object.keys(MARS_REFS).map(k => `<option ${k === S.marsRef ? 'selected' : ''}>${k}</option>`).join('')}</select></div>
-    <div class="grow"><label class="lbl">Earth ⟷ Mars blend <output id="o_blend">${Math.round(S.blend * 100)} % Mars</output></label><input type="range" id="blend" min="0" max="1" step="0.05" value="${S.blend}"></div></div>
+  box.innerHTML = `<h3 style="margin-top:0">${tr('Surface comparison', 'Comparación de superficies')} · ${r.site} ↔ ${tr('Mars', 'Marte')} <button class="btn-link" id="focus_back">${tr('← All sites', '← Todos los sitios')}</button></h3>
+    <p class="hint">${tr(`Both patches cover about 3.8 km at ~5 m per pixel: Esri imagery on Earth, the MRO HiRISE mosaic of the
+    Curiosity roving site (NASA Mars Trek) on Mars. Slide to fade one surface into the other.`, `Ambos recortes cubren unos 3.8 km a ~5 m por píxel: imágenes Esri en la Tierra y el mosaico HiRISE de MRO del sitio recorrido por Curiosity (NASA Mars Trek) en Marte. Desliza para fundir una superficie en la otra.`)}</p>
+    <div class="row"><div><label class="lbl" for="mars_ref">${tr('Mars reference patch', 'Recorte de referencia en Marte')}</label><select id="mars_ref">${Object.keys(MARS_REFS).map(k => `<option ${k === S.marsRef ? 'selected' : ''}>${k}</option>`).join('')}</select></div>
+    <div class="grow"><label class="lbl">${tr('Earth ⟷ Mars blend', 'Mezcla Tierra ⟷ Marte')} <output id="o_blend">${Math.round(S.blend * 100)} % ${tr('Mars', 'Marte')}</output></label><input type="range" id="blend" min="0" max="1" step="0.05" value="${S.blend}"></div></div>
     <div class="patches"><div><canvas id="cv_e" width="768" height="768"></canvas><div class="cap" id="cap_e"></div></div>
     <div><canvas id="cv_b" width="768" height="768"></canvas><div class="cap" id="cap_b"></div></div>
     <div><canvas id="cv_m" width="768" height="768"></canvas><div class="cap" id="cap_m"></div></div></div>
     <div id="nasa_focus"></div>
-    <div class="two"><div><p class="h">Visual similarity of the two patches <span class="hint">(imagery statistics, not a physical measurement)</span></p><div id="vis_tbl" class="spin">Computing…</div></div>
-    <div><p class="h">Environmental similarity to ${S.target}, by variable</p><div class="tbl-wrap"><table class="data" id="env_tbl"></table></div>
-    <p class="hint">Weighted overall: ${Math.round(r.score * 100)} % (${r.tier}). Open the Similarity explorer tab to compare several sites variable by variable.</p></div></div>`;
+    <div class="two"><div><p class="h">${tr('Visual similarity of the two patches', 'Similitud visual de los dos recortes')} <span class="hint">${tr('(imagery statistics, not a physical measurement)', '(estadísticas de imagen, no una medición física)')}</span></p><div id="vis_tbl" class="spin">${tr('Computing…', 'Calculando…')}</div></div>
+    <div><p class="h">${tr(`Environmental similarity to ${S.target}, by variable`, `Similitud ambiental con ${S.target === 'Mars' ? 'Marte' : 'la Luna'}, por variable`)}</p><div class="tbl-wrap"><table class="data" id="env_tbl"></table></div>
+    <p class="hint">${tr('Weighted overall', 'Total ponderado')}: ${Math.round(r.score * 100)} % (${r.tier}). ${tr('Open the Similarity explorer tab to compare several sites variable by variable.', 'Abre la pestaña Explorador de similitud para comparar varios sitios variable por variable.')}</p></div></div>`;
   nasaDataBlock(r.lat, r.lon, $('#nasa_focus'));
   $('#focus_back').addEventListener('click', () => { setFocus(null); window.scrollTo({ top: 0, behavior: 'smooth' }); });
-  $('#env_tbl').innerHTML = '<tr><th>Variable</th><th>Earth value</th><th>Similarity %</th><th>Weight</th></tr>' +
+  $('#env_tbl').innerHTML = `<tr><th>${tr('Variable', 'Variable')}</th><th>${tr('Earth value', 'Valor en la Tierra')}</th><th>${tr('Similarity %', 'Similitud %')}</th><th>${tr('Weight', 'Peso')}</th></tr>` +
     KEYS.map(k => `<tr><td>${LABELS[k]}</td><td>${FMT[k](r)}</td><td>${pct(r.comps[k])}</td><td>${S.W[k].toFixed(2)}</td></tr>`).join('');
   const e = earthUrls(r.lat, r.lon); const ref = MARS_REFS[S.marsRef]; const m = marsUrls(ref[0], ref[1]);
   const [ce, cm] = await Promise.all([mosaic(e.urls), mosaic(m.urls)]);
@@ -319,38 +324,38 @@ async function renderFocus() {
   const draw = () => {
     $('#cv_e').getContext('2d').drawImage(ce, 0, 0); $('#cv_m').getContext('2d').drawImage(cm, 0, 0);
     const cb = $('#cv_b').getContext('2d'); cb.globalAlpha = 1; cb.drawImage(ce, 0, 0); cb.globalAlpha = S.blend; cb.drawImage(cm, 0, 0); cb.globalAlpha = 1;
-    $('#cap_b').textContent = `Blend · ${Math.round((1 - S.blend) * 100)} % Earth / ${Math.round(S.blend * 100)} % Mars`;
+    $('#cap_b').textContent = tr(`Blend · ${Math.round((1 - S.blend) * 100)} % Earth / ${Math.round(S.blend * 100)} % Mars`, `Mezcla · ${Math.round((1 - S.blend) * 100)} % Tierra / ${Math.round(S.blend * 100)} % Marte`);
   };
   draw();
-  $('#cap_e').textContent = `${r.site} · Esri imagery · ${e.res.toFixed(1)} m/px`;
+  $('#cap_e').textContent = tr(`${r.site} · Esri imagery · ${e.res.toFixed(1)} m/px`, `${r.site} · imágenes Esri · ${e.res.toFixed(1)} m/px`);
   $('#cap_m').textContent = `${S.marsRef} · HiRISE (Mars Trek) · ${m.res.toFixed(1)} m/px`;
-  $('#blend').addEventListener('input', ev => { S.blend = +ev.target.value; $('#o_blend').textContent = `${Math.round(S.blend * 100)} % Mars`; draw(); });
+  $('#blend').addEventListener('input', ev => { S.blend = +ev.target.value; $('#o_blend').textContent = `${Math.round(S.blend * 100)} % ${tr('Mars', 'Marte')}`; draw(); });
   $('#mars_ref').addEventListener('change', ev => { S.marsRef = ev.target.value; renderFocus(); });
   const sa = stats(ce), sb = stats(cm);
-  if (!sa || !sb) { $('#vis_tbl').innerHTML = '<p class="hint">The tile server did not allow pixel access from the browser, so image statistics are not available here. The Python app computes them server-side.</p>'; return; }
-  const sim = { Brightness: 100 * (1 - Math.abs(sa.brightness - sb.brightness)),
-    Contrast: 100 * Math.exp(-Math.abs(Math.log((sa.contrast + 1e-4) / (sb.contrast + 1e-4)))),
-    'Fine texture': 100 * Math.exp(-Math.abs(Math.log((sa.texture + 1e-4) / (sb.texture + 1e-4)))) };
+  if (!sa || !sb) { $('#vis_tbl').innerHTML = `<p class="hint">${tr('The tile server did not allow pixel access from the browser, so image statistics are not available here. The Python app computes them server-side.', 'El servidor de teselas no permitió el acceso a píxeles desde el navegador, así que las estadísticas de imagen no están disponibles aquí. La app de Python las calcula en el servidor.')}</p>`; return; }
+  const sim = { [tr('Brightness', 'Brillo')]: 100 * (1 - Math.abs(sa.brightness - sb.brightness)),
+    [tr('Contrast', 'Contraste')]: 100 * Math.exp(-Math.abs(Math.log((sa.contrast + 1e-4) / (sb.contrast + 1e-4)))),
+    [tr('Fine texture', 'Textura fina')]: 100 * Math.exp(-Math.abs(Math.log((sa.texture + 1e-4) / (sb.texture + 1e-4)))) };
   const vals = [[sa.brightness, sb.brightness, 2], [sa.contrast, sb.contrast, 3], [sa.texture, sb.texture, 4]];
-  $('#vis_tbl').className = ''; $('#vis_tbl').innerHTML = `<table class="data"><tr><th>Measure</th><th>Similarity %</th><th>Earth</th><th>Mars</th></tr>` +
+  $('#vis_tbl').className = ''; $('#vis_tbl').innerHTML = `<table class="data"><tr><th>${tr('Measure', 'Medida')}</th><th>${tr('Similarity %', 'Similitud %')}</th><th>${tr('Earth', 'Tierra')}</th><th>${tr('Mars', 'Marte')}</th></tr>` +
     Object.entries(sim).map(([k, v], i) => `<tr><td>${k}</td><td>${pbar(v)}${Math.round(v)} %</td><td>${vals[i][0].toFixed(vals[i][2])}</td><td>${vals[i][1].toFixed(vals[i][2])}</td></tr>`).join('') +
-    `</table><p class="hint">Visual mean ${Math.round(Object.values(sim).reduce((a, b) => a + b) / 3)} %. Brightness is the mean grey level, contrast its standard deviation, fine texture the mean absolute Laplacian; colour and illumination differ between the two sensors, so treat this as a qualitative cue.</p>`;
+    `</table><p class="hint">${tr('Visual mean', 'Media visual')} ${Math.round(Object.values(sim).reduce((a, b) => a + b) / 3)} %. ${tr('Brightness is the mean grey level, contrast its standard deviation, fine texture the mean absolute Laplacian; colour and illumination differ between the two sensors, so treat this as a qualitative cue.', 'El brillo es el nivel de gris medio, el contraste su desviación estándar y la textura fina el Laplaciano absoluto medio; el color y la iluminación difieren entre los dos sensores, así que tómalo como una pista cualitativa.')}</p>`;
 }
 
 // ---------- ranking ----------
 const PL = { displayModeBar: false, responsive: true };
 function renderRank() {
   const v = S.res; if (!v.length) return;
-  $('#rank_title').textContent = `Similarity to ${S.target}`;
+  $('#rank_title').textContent = tr(`Similarity to ${S.target}`, `Similitud con ${S.target === 'Mars' ? 'Marte' : 'la Luna'}`);
   const asc = [...v].sort((a, b) => a.score - b.score);
   Plotly.react('rank_bar', [{ type: 'bar', orientation: 'h', x: asc.map(r => r.score), y: asc.map(r => r.site),
     marker: { color: asc.map(r => r.score), colorscale: [[0, SCALE[0]], [.45, SCALE[1]], [.6, SCALE[2]], [1, SCALE[3]]], cmin: 0, cmax: 1 },
     hovertemplate: '%{y}: %{x:.3f}<extra></extra>' }],
-    { height: H(500, 420), margin: { l: 0, r: 10, t: 10, b: 30 }, font: FONT, xaxis: { range: [0, 1], title: 'score' }, yaxis: { automargin: true }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)' }, PL);
+    { height: H(500, 420), margin: { l: 0, r: 10, t: 10, b: 30 }, font: FONT, xaxis: { range: [0, 1], title: tr('score', 'puntaje') }, yaxis: { automargin: true }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)' }, PL);
   Plotly.react('rank_scatter', [{ type: 'scatter', mode: 'markers+text', x: v.map(r => r.score_moon), y: v.map(r => r.score_mars), text: v.map(r => r.site),
     textposition: 'top center', textfont: { size: 10, color: MUTED }, marker: { size: 12, color: v.map(r => r.score), colorscale: [[0, SCALE[0]], [.45, SCALE[1]], [.6, SCALE[2]], [1, SCALE[3]]], cmin: 0, cmax: 1 },
-    hovertemplate: '%{text}<br>Moon %{x:.2f} · Mars %{y:.2f}<extra></extra>' }],
-    { height: H(500, 380), margin: { l: 50, r: 10, t: 10, b: 40 }, font: FONT, xaxis: { title: 'Moon similarity' }, yaxis: { title: 'Mars similarity' }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)' }, PL);
+    hovertemplate: tr('%{text}<br>Moon %{x:.2f} · Mars %{y:.2f}<extra></extra>', '%{text}<br>Luna %{x:.2f} · Marte %{y:.2f}<extra></extra>') }],
+    { height: H(500, 380), margin: { l: 50, r: 10, t: 10, b: 40 }, font: FONT, xaxis: { title: tr('Moon similarity', 'Similitud con la Luna') }, yaxis: { title: tr('Mars similarity', 'Similitud con Marte') }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)' }, PL);
   const cols = ['rank', 'site', 'country', 'type', 'score', 'tier', 'precip_mm', 'temp_range_c', 'albedo', 'wind10m_ms', 'wind10m_max_ms', 'altitude_m', 'slope30_deg', 'rough30_m', 'slope_deg', 'roughness_m', 'score_mars', 'score_moon'];
   $('#rank_table').innerHTML = '<tr>' + cols.map(c => `<th>${c}</th>`).join('') + '</tr>' +
     v.map(r => '<tr>' + cols.map(c => `<td>${isNum(r[c]) ? r[c] : (r[c] ?? '')}</td>`).join('') + '</tr>').join('');
@@ -367,9 +372,9 @@ function renderExplorer() {
   if (!S.exSites.length) S.exSites = [names.find(n => n.startsWith('Médano')), ...names.filter(n => !n.startsWith('Médano')).slice(0, 2)].filter(Boolean);
   S.exSites = S.exSites.filter(n => names.includes(n));
   for (const k of KEYS) if (!(k in S.exActive)) S.exActive[k] = S.W[k] > 0;
-  $('#ex_intro').innerHTML = `<b>How similar is each site to ${S.target}, variable by variable?</b> Every variable is scored 0–100 % against the
+  $('#ex_intro').innerHTML = tr(`<b>How similar is each site to ${S.target}, variable by variable?</b> Every variable is scored 0–100 % against the
     ${S.target} reference; the overall figure is the weighted mean of the variables you keep on. Weights come from the sidebar; switching a
-    variable off here removes it from this comparison only. Pick up to 5 sites.`;
+    variable off here removes it from this comparison only. Pick up to 5 sites.`, `<b>¿Qué tan parecido es cada sitio a ${S.target === 'Mars' ? 'Marte' : 'la Luna'}, variable por variable?</b> Cada variable se puntúa de 0 a 100 % frente a la referencia de ${S.target === 'Mars' ? 'Marte' : 'la Luna'}; la cifra global es la media ponderada de las variables que dejes activas. Los pesos vienen del panel lateral; desactivar una variable aquí solo la quita de esta comparación. Elige hasta 5 sitios.`);
   $('#ex_sites').innerHTML = names.map(n => `<button class="chip ${S.exSites.includes(n) ? 'is-on' : ''}" data-s="${n}">${n}</button>`).join('');
   $('#ex_sites').querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => {
     const n = c.dataset.s; if (S.exSites.includes(n)) S.exSites = S.exSites.filter(x => x !== n); else if (S.exSites.length < 5) S.exSites.push(n); renderExplorer(); }));
@@ -377,23 +382,23 @@ function renderExplorer() {
   $('#ex_vars').querySelectorAll('input').forEach(i => i.addEventListener('change', () => { S.exActive[i.dataset.k] = i.checked; renderExplorer(); }));
   const Wa = {}; for (const k of KEYS) Wa[k] = S.exActive[k] ? S.W[k] : 0;
   const on = KEYS.filter(k => Wa[k] > 0);
-  if (!S.exSites.length || !on.length) { $('#ex_overall').innerHTML = '<p class="hint">Pick at least one site and keep one weighted variable on.</p>'; Plotly.purge('ex_bar'); Plotly.purge('ex_radar'); $('#ex_table').innerHTML = ''; $('#ex_h2h').innerHTML = ''; return; }
+  if (!S.exSites.length || !on.length) { $('#ex_overall').innerHTML = `<p class="hint">${tr('Pick at least one site and keep one weighted variable on.', 'Elige al menos un sitio y deja activa una variable con peso.')}</p>`; Plotly.purge('ex_bar'); Plotly.purge('ex_radar'); $('#ex_table').innerHTML = ''; $('#ex_h2h').innerHTML = ''; return; }
   const rows = S.exSites.map(n => v.find(r => r.site === n));
   const overall = rows.map(r => similarity(r.comps, Wa));
-  $('#ex_overall').innerHTML = rows.map((r, i) => stat(r.site, isNaN(overall[i]) ? 'n/a' : `${Math.round(overall[i] * 100)} %`, `${r.country} · ${on.length} variables`)).join('');
+  $('#ex_overall').innerHTML = rows.map((r, i) => stat(r.site, isNaN(overall[i]) ? tr('n/a', 'n/d') : `${Math.round(overall[i] * 100)} %`, `${r.country} · ${on.length} ${tr('variables', 'variables')}`)).join('');
   Plotly.react('ex_bar', rows.map((r, i) => ({ type: 'bar', name: r.site, x: on.map(k => LABELS[k]), y: on.map(k => isNaN(r.comps[k]) ? 0 : r.comps[k] * 100), marker: { color: BRAND[i % BRAND.length] },
     hovertemplate: '%{x}: %{y:.0f} %<extra>' + r.site + '</extra>' })),
-    { barmode: 'group', height: H(360, 320), margin: { l: 40, r: 0, t: 10, b: 60 }, font: FONT, yaxis: { range: [0, 100], title: 'Similarity %' }, legend: { orientation: 'h', y: 1.18 }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)' }, PL);
+    { barmode: 'group', height: H(360, 320), margin: { l: 40, r: 0, t: 10, b: 60 }, font: FONT, yaxis: { range: [0, 100], title: tr('Similarity %', 'Similitud %') }, legend: { orientation: 'h', y: 1.18 }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)' }, PL);
   Plotly.react('ex_radar', rows.map((r, i) => { const vals = on.map(k => isNaN(r.comps[k]) ? 0 : r.comps[k] * 100); return { type: 'scatterpolar', name: r.site, r: [...vals, vals[0]], theta: [...on.map(k => LABELS[k]), LABELS[on[0]]], fill: 'toself', line: { color: BRAND[i % BRAND.length] }, fillcolor: BRAND[i % BRAND.length] + '33' }; }),
     { height: H(360, 320), margin: { l: 40, r: 40, t: 20, b: 20 }, font: FONT, showlegend: false, polar: { radialaxis: { range: [0, 100], ticksuffix: ' %' } }, paper_bgcolor: 'rgba(0,0,0,0)' }, PL);
-  $('#ex_table').innerHTML = `<tr><th>Variable</th><th>Site</th><th>Earth value</th><th>${S.target} reference</th><th>Similarity %</th><th>Weight</th></tr>` +
+  $('#ex_table').innerHTML = `<tr><th>${tr('Variable', 'Variable')}</th><th>${tr('Site', 'Sitio')}</th><th>${tr('Earth value', 'Valor en la Tierra')}</th><th>${tr(`${S.target} reference`, `Referencia ${S.target === 'Mars' ? 'Marte' : 'Luna'}`)}</th><th>${tr('Similarity %', 'Similitud %')}</th><th>${tr('Weight', 'Peso')}</th></tr>` +
     rows.flatMap(r => on.map(k => `<tr><td>${LABELS[k]}</td><td>${r.site}</td><td>${FMT[k](r)}</td><td>${fmtRef(k)}</td><td>${pct(r.comps[k])}</td><td>${Wa[k].toFixed(2)}</td></tr>`)).join('');
   if (rows.length >= 2) {
     const a = rows[0], b = rows[1];
-    $('#ex_h2h').innerHTML = `<p class="h">Head to head · ${a.site} vs ${b.site} <span class="hint">(first two selected)</span></p><div class="tbl-wrap"><table class="data"><tr><th>Variable</th><th>${a.site}</th><th>A %</th><th>${b.site}</th><th>B %</th><th>Edge</th></tr>` +
+    $('#ex_h2h').innerHTML = `<p class="h">${tr('Head to head', 'Cara a cara')} · ${a.site} vs ${b.site} <span class="hint">${tr('(first two selected)', '(los dos primeros seleccionados)')}</span></p><div class="tbl-wrap"><table class="data"><tr><th>${tr('Variable', 'Variable')}</th><th>${a.site}</th><th>A %</th><th>${b.site}</th><th>B %</th><th>${tr('Edge', 'Ventaja')}</th></tr>` +
       on.map(k => { const va = a.comps[k], vb = b.comps[k]; const d = (va - vb) * 100;
         return `<tr><td>${LABELS[k]}</td><td>${FMT[k](a)}</td><td>${Math.round(va * 100)}</td><td>${FMT[k](b)}</td><td>${Math.round(vb * 100)}</td><td>${isNaN(d) ? '' : d > 0 ? `${a.site} +${d.toFixed(0)}` : `${b.site} +${(-d).toFixed(0)}`}</td></tr>`; }).join('') +
-      `</table></div><p class="hint">Overall for ${S.target}: ${a.site} ${Math.round(overall[0] * 100)} % vs ${b.site} ${Math.round(overall[1] * 100)} %.</p>`;
+      `</table></div><p class="hint">${tr(`Overall for ${S.target}`, `Total para ${S.target === 'Mars' ? 'Marte' : 'la Luna'}`)}: ${a.site} ${Math.round(overall[0] * 100)} % vs ${b.site} ${Math.round(overall[1] * 100)} %.</p>`;
   } else $('#ex_h2h').innerHTML = '';
 }
 
@@ -406,8 +411,8 @@ function ensureTwin() {
   const ov = { ...gibsOverlays() };
   for (const [label, [svc, layer]] of Object.entries(ING_SERVICES))
     ov[`INGEMMET · ${label}`] = L.tileLayer.wms(ING_WMS(svc), { layers: layer, format: 'image/png', transparent: true, version: '1.1.1', opacity: .6 });
-  L.control.layers({ 'Satellite (Esri)': sat }, ov).addTo(me);
-  L.circleMarker(MB, { radius: 8, color: NAVY, fillColor: NAVY, fillOpacity: .9 }).bindTooltip('Médano Blanco (barchan, ~16.4 ha)').addTo(me);
+  L.control.layers({ [tr('Satellite (Esri)', 'Satélite (Esri)')]: sat }, ov).addTo(me);
+  L.circleMarker(MB, { radius: 8, color: NAVY, fillColor: NAVY, fillOpacity: .9 }).bindTooltip(tr('Médano Blanco (barchan, ~16.4 ha)', 'Médano Blanco (barján, ~16.4 ha)')).addTo(me);
   maps.earth = me;
   const mm = L.map('map_mars', { crs: L.CRS.EPSG4326, center: NAMIB, zoom: 13, maxZoom: 18 });
   const bases = {}, overs = {};
@@ -416,7 +421,7 @@ function ensureTwin() {
     if (isBase) { bases[label] = t; t.addTo(mm); } else { overs[label] = t; if (show) t.addTo(mm); }
   }
   L.control.layers(bases, overs).addTo(mm);
-  L.circleMarker(NAMIB, { radius: 8, color: RED, fillColor: RED, fillOpacity: .9 }).bindTooltip('Namib Dune · Curiosity sol 1192').addTo(mm);
+  L.circleMarker(NAMIB, { radius: 8, color: RED, fillColor: RED, fillOpacity: .9 }).bindTooltip(tr('Namib Dune · Curiosity sol 1192', 'Duna Namib · Curiosity sol 1192')).addTo(mm);
   L.circleMarker(BRADBURY, { radius: 6, color: '#fff', fillColor: '#fff', fillOpacity: .9 }).bindTooltip('Bradbury Landing · Curiosity, 2012').addTo(mm);
   maps.mars = mm; addMepMarkers(mm);
   nasaDataBlock(MB[0], MB[1], $('#nasa_twin')); odeBlock($('#pds_block'));
@@ -424,40 +429,40 @@ function ensureTwin() {
 }
 function renderTwinData() {
   const s2 = S.s2, mb = S.res.find(r => r.site.startsWith('Médano'));
-  const mig = [['Médano Blanco, slipface 2006–16 · MINAM', 4.0, 'Earth'], ['Médano Blanco, slipface 2016–22 · MINAM', 6.0, 'Earth']];
-  if (s2) mig.push([`Médano Blanco, dune body ${s2.first.slice(2, 4)}–${s2.last.slice(2, 4)} · Sentinel-2, ALTERGEA`, s2.speed_m_per_yr, 'Earth']);
-  mig.push(['Bagnold dunes · HiRISE, Silvestro 2013', 0.4, 'Mars'], ['Bagnold large ripples, max · HiRISE', 1.7, 'Mars']);
-  Plotly.react('mig_bar', ['Earth', 'Mars'].map(w => ({ type: 'bar', orientation: 'h', name: w, x: mig.filter(m => m[2] === w).map(m => m[1]), y: mig.filter(m => m[2] === w).map(m => m[0]),
-    marker: { color: w === 'Earth' ? NAVY : RED }, text: mig.filter(m => m[2] === w).map(m => m[1].toFixed(1)), textposition: 'outside', cliponaxis: false, hovertemplate: '%{y}: %{x} m/yr<extra></extra>' })),
-    { height: H(320, 340), margin: { l: 0, r: 30, t: 10, b: 40 }, font: FONT, xaxis: { title: 'Migration (m per Earth year)', range: [0, 7.5] }, yaxis: { automargin: true, tickfont: { size: isSmall() ? 10 : 11 }, categoryorder: 'array', categoryarray: mig.map(m => m[0]).reverse() }, legend: { orientation: 'h', y: 1.1 }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)' }, PL);
-  const ev = (k, f) => mb && isNum(mb[k]) ? f(mb[k]) : 'n/a';
-  const cmp = [['Dune type', 'Barchan, active; ~16.4 ha', 'Barchans + linear dunes, active'],
-    ['Sand composition', "Quartz sand, light-toned: INGEMMET unit Q-eo 'Depósito eólico'", 'Dark basaltic, olivine-bearing (ChemCam/APXS)'],
-    ['Surface albedo', ev('albedo', v => `${v} (POWER, 50 km cell)`), 'Low (dark sand)'],
-    ['Elevation and relief', mb && isNum(mb.alt30_m) ? `${Math.round(mb.alt30_m)} m; slope ${mb.slope30_deg}°, roughness ${mb.rough30_m} m (Copernicus DEM 30 m)` : ev('altitude_m', v => `${Math.round(v)} m (SRTM 30 m)`), '−4,422 m MOLA datum (rover, sol 1192)'],
-    ['Wind 10 m', mb ? `${mb.wind10m_ms} mean / ${mb.wind10m_max_ms} max m/s (POWER)` : 'n/a', 'REMS in situ (not yet in app)'],
-    ['Precipitation', ev('precip_mm', v => `${v} mm/yr (POWER)`), 'None'],
-    ['Topography source', 'Copernicus DEM GLO-30 (ESA, via Planetary Computer); SRTM 30 m', 'HiRISE DTM 1 m (Gale_DEM_SMG_1m); MOLA 463 m is too coarse'],
-    ['Imagery source', 'Sentinel-2 10 m (Planetary Computer); Esri imagery; NASA MODIS (GIBS)', 'CTX mosaic; HiRISE mosaic (Mars Trek)'],
-    ['Site management', 'MINAM: vulnerable to intensive tourism (sandboarding)', 'Rover science site, not a base site']];
-  $('#cmp_table').innerHTML = '<tr><th>Feature</th><th>Médano Blanco</th><th>Bagnold / Namib Dune</th></tr>' + cmp.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('');
+  const mig = [[tr('Médano Blanco, slipface 2006–16 · MINAM', 'Médano Blanco, cara de avalancha 2006–16 · MINAM'), 4.0, 'Earth'], [tr('Médano Blanco, slipface 2016–22 · MINAM', 'Médano Blanco, cara de avalancha 2016–22 · MINAM'), 6.0, 'Earth']];
+  if (s2) mig.push([tr(`Médano Blanco, dune body ${s2.first.slice(2, 4)}–${s2.last.slice(2, 4)} · Sentinel-2, ALTERGEA`, `Médano Blanco, cuerpo de la duna ${s2.first.slice(2, 4)}–${s2.last.slice(2, 4)} · Sentinel-2, ALTERGEA`), s2.speed_m_per_yr, 'Earth']);
+  mig.push([tr('Bagnold dunes · HiRISE, Silvestro 2013', 'Dunas Bagnold · HiRISE, Silvestro 2013'), 0.4, 'Mars'], [tr('Bagnold large ripples, max · HiRISE', 'Grandes ondulaciones Bagnold, máx. · HiRISE'), 1.7, 'Mars']);
+  Plotly.react('mig_bar', ['Earth', 'Mars'].map(w => ({ type: 'bar', orientation: 'h', name: w === 'Earth' ? tr('Earth', 'Tierra') : tr('Mars', 'Marte'), x: mig.filter(m => m[2] === w).map(m => m[1]), y: mig.filter(m => m[2] === w).map(m => m[0]),
+    marker: { color: w === 'Earth' ? NAVY : RED }, text: mig.filter(m => m[2] === w).map(m => m[1].toFixed(1)), textposition: 'outside', cliponaxis: false, hovertemplate: tr('%{y}: %{x} m/yr<extra></extra>', '%{y}: %{x} m/año<extra></extra>') })),
+    { height: H(320, 340), margin: { l: 0, r: 30, t: 10, b: 40 }, font: FONT, xaxis: { title: tr('Migration (m per Earth year)', 'Migración (m por año terrestre)'), range: [0, 7.5] }, yaxis: { automargin: true, tickfont: { size: isSmall() ? 10 : 11 }, categoryorder: 'array', categoryarray: mig.map(m => m[0]).reverse() }, legend: { orientation: 'h', y: 1.1 }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)' }, PL);
+  const ev = (k, f) => mb && isNum(mb[k]) ? f(mb[k]) : tr('n/a', 'n/d');
+  const cmp = [[tr('Dune type', 'Tipo de duna'), tr('Barchan, active; ~16.4 ha', 'Barján, activa; ~16.4 ha'), tr('Barchans + linear dunes, active', 'Barjanes y dunas lineales, activas')],
+    [tr('Sand composition', 'Composición de la arena'), tr("Quartz sand, light-toned: INGEMMET unit Q-eo 'Depósito eólico'", "Arena de cuarzo, de tono claro: unidad INGEMMET Q-eo 'Depósito eólico'"), tr('Dark basaltic, olivine-bearing (ChemCam/APXS)', 'Basáltica oscura, con olivino (ChemCam/APXS)')],
+    [tr('Surface albedo', 'Albedo superficial'), ev('albedo', v => `${v} (POWER, ${tr('50 km cell', 'celda de 50 km')})`), tr('Low (dark sand)', 'Bajo (arena oscura)')],
+    [tr('Elevation and relief', 'Elevación y relieve'), mb && isNum(mb.alt30_m) ? `${Math.round(mb.alt30_m)} m; ${tr('slope', 'pendiente')} ${mb.slope30_deg}°, ${tr('roughness', 'rugosidad')} ${mb.rough30_m} m (Copernicus DEM 30 m)` : ev('altitude_m', v => `${Math.round(v)} m (SRTM 30 m)`), tr('−4,422 m MOLA datum (rover, sol 1192)', '−4,422 m sobre el datum MOLA (rover, sol 1192)')],
+    [tr('Wind 10 m', 'Viento a 10 m'), mb ? `${mb.wind10m_ms} ${tr('mean', 'medio')} / ${mb.wind10m_max_ms} ${tr('max', 'máx.')} m/s (POWER)` : tr('n/a', 'n/d'), tr('REMS in situ (not yet in app)', 'REMS in situ (aún no incluido en la app)')],
+    [tr('Precipitation', 'Precipitación'), ev('precip_mm', v => `${v} ${tr('mm/yr', 'mm/año')} (POWER)`), tr('None', 'Ninguna')],
+    [tr('Topography source', 'Fuente de topografía'), tr('Copernicus DEM GLO-30 (ESA, via Planetary Computer); SRTM 30 m', 'Copernicus DEM GLO-30 (ESA, vía Planetary Computer); SRTM 30 m'), tr('HiRISE DTM 1 m (Gale_DEM_SMG_1m); MOLA 463 m is too coarse', 'DTM HiRISE 1 m (Gale_DEM_SMG_1m); MOLA 463 m es demasiado grueso')],
+    [tr('Imagery source', 'Fuente de imágenes'), tr('Sentinel-2 10 m (Planetary Computer); Esri imagery; NASA MODIS (GIBS)', 'Sentinel-2 10 m (Planetary Computer); imágenes Esri; NASA MODIS (GIBS)'), tr('CTX mosaic; HiRISE mosaic (Mars Trek)', 'Mosaico CTX; mosaico HiRISE (Mars Trek)')],
+    [tr('Site management', 'Gestión del sitio'), tr('MINAM: vulnerable to intensive tourism (sandboarding)', 'MINAM: vulnerable al turismo intensivo (sandboard)'), tr('Rover science site, not a base site', 'Sitio de ciencia de rover, no de base')]];
+  $('#cmp_table').innerHTML = `<tr><th>${tr('Feature', 'Característica')}</th><th>Médano Blanco</th><th>${tr('Bagnold / Namib Dune', 'Bagnold / Duna Namib')}</th></tr>` + cmp.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('');
   const blk = $('#s2_block');
-  if (!s2 || !S.s2rows.length) { blk.innerHTML = '<p class="hint">Sentinel-2 measurement not available in this build.</p>'; return; }
+  if (!s2 || !S.s2rows.length) { blk.innerHTML = `<p class="hint">${tr('Sentinel-2 measurement not available in this build.', 'La medición con Sentinel-2 no está disponible en esta versión.')}</p>`; return; }
   if (blk.dataset.done) return; blk.dataset.done = '1';
   const rows = S.s2rows;
-  blk.innerHTML = `<p class="h">Sentinel-2 time series, ${s2.first} to ${s2.last}: ${s2.n_scenes} cloud-free scenes</p>
+  blk.innerHTML = `<p class="h">${tr(`Sentinel-2 time series, ${s2.first} to ${s2.last}: ${s2.n_scenes} cloud-free scenes`, `Serie temporal Sentinel-2, ${s2.first} a ${s2.last}: ${s2.n_scenes} escenas sin nubes`)}</p>
     <div class="two"><div><div id="s2_chart"></div>
-    <p class="hint">${s2.speed_m_per_yr}${s2.speed_sigma_m_per_yr != null ? ` ± ${s2.speed_sigma_m_per_yr}` : ''} m/yr towards ${s2.bearing_deg}°, scatter about the fit ${s2.fit_rms_m} m, ${s2.n_scenes} scenes. Copernicus Sentinel-2 L2A, 10 m, via Earth Search (AWS). Method: ${s2.method}.</p>
-    <div class="note"><b>Reading the two Earth figures.</b> Our Sentinel-2 series tracks the whole dune body and finds it essentially stationary (below 1 m/yr, at the 10 m detection limit). The MINAM figure of 4–6 m/yr describes the slipface edge and the arms, where sandboarding and buggy traffic concentrate, measured on Google Earth imagery whose georeferencing can drift by metres between dates. In analog terms this brings Médano Blanco closer to Bagnold: both fields are active at the ripple and slipface scale while their dune bodies migrate well under 1 m/yr.</div></div>
-    <div><label class="lbl">Scene <output id="o_scene">${rows[rows.length - 1].date}</output></label><input type="range" id="scene" min="0" max="${rows.length - 1}" value="${rows.length - 1}">
-    <img id="scene_img" src="data/sentinel/${rows[rows.length - 1].date}.png" alt="Sentinel-2 cut-out" style="width:100%;border-radius:4px;border:1px solid var(--rule)">
-    <p class="hint">Sentinel-2 true colour, ~2 km across. Red outline: dune outline from the brightness threshold; the displacement is measured by cross-correlating the dune pixels, not from this outline.</p>
-    <div class="tbl-wrap" style="max-height:220px;overflow:auto"><table class="data"><tr><th>date</th><th>shift E m</th><th>shift N m</th><th>match</th><th>area ha</th></tr>${rows.map(r => `<tr><td>${r.date}</td><td>${r.shift_east_m}</td><td>${r.shift_north_m}</td><td>${(+r.ncc_peak).toFixed(2)}</td><td>${r.area_ha}</td></tr>`).join('')}</table></div></div></div>`;
+    <p class="hint">${s2.speed_m_per_yr}${s2.speed_sigma_m_per_yr != null ? ` ± ${s2.speed_sigma_m_per_yr}` : ''} ${tr(`m/yr towards ${s2.bearing_deg}°, scatter about the fit ${s2.fit_rms_m} m, ${s2.n_scenes} scenes. Copernicus Sentinel-2 L2A, 10 m, via Earth Search (AWS). Method: ${s2.method}.`, `m/año hacia ${s2.bearing_deg}°, dispersión respecto al ajuste ${s2.fit_rms_m} m, ${s2.n_scenes} escenas. Copernicus Sentinel-2 L2A, 10 m, vía Earth Search (AWS). Método: ${s2.method}.`)}</p>
+    <div class="note">${tr(`<b>Reading the two Earth figures.</b> Our Sentinel-2 series tracks the whole dune body and finds it essentially stationary (below 1 m/yr, at the 10 m detection limit). The MINAM figure of 4–6 m/yr describes the slipface edge and the arms, where sandboarding and buggy traffic concentrate, measured on Google Earth imagery whose georeferencing can drift by metres between dates. In analog terms this brings Médano Blanco closer to Bagnold: both fields are active at the ripple and slipface scale while their dune bodies migrate well under 1 m/yr.`, `<b>Cómo leer las dos cifras de la Tierra.</b> Nuestra serie Sentinel-2 sigue todo el cuerpo de la duna y lo encuentra prácticamente estacionario (menos de 1 m/año, en el límite de detección de 10 m). La cifra del MINAM de 4–6 m/año describe el borde de la cara de avalancha y los brazos, donde se concentran el sandboard y los areneros, medida sobre imágenes de Google Earth cuya georreferenciación puede variar metros entre fechas. En términos de análogo, esto acerca Médano Blanco a Bagnold: ambos campos están activos a escala de ondulaciones y caras de avalancha, mientras sus cuerpos de duna migran muy por debajo de 1 m/año.`)}</div></div>
+    <div><label class="lbl">${tr('Scene', 'Escena')} <output id="o_scene">${rows[rows.length - 1].date}</output></label><input type="range" id="scene" min="0" max="${rows.length - 1}" value="${rows.length - 1}">
+    <img id="scene_img" src="data/sentinel/${rows[rows.length - 1].date}.png" alt="${tr('Sentinel-2 cut-out', 'Recorte Sentinel-2')}" style="width:100%;border-radius:4px;border:1px solid var(--rule)">
+    <p class="hint">${tr('Sentinel-2 true colour, ~2 km across. Red outline: dune outline from the brightness threshold; the displacement is measured by cross-correlating the dune pixels, not from this outline.', 'Sentinel-2 en color real, ~2 km de ancho. Contorno rojo: perfil de la duna por umbral de brillo; el desplazamiento se mide por correlación cruzada de los píxeles de la duna, no con este contorno.')}</p>
+    <div class="tbl-wrap" style="max-height:220px;overflow:auto"><table class="data"><tr><th>${tr('date', 'fecha')}</th><th>${tr('shift E m', 'desp. E m')}</th><th>${tr('shift N m', 'desp. N m')}</th><th>${tr('match', 'ajuste')}</th><th>${tr('area ha', 'área ha')}</th></tr>${rows.map(r => `<tr><td>${r.date}</td><td>${r.shift_east_m}</td><td>${r.shift_north_m}</td><td>${(+r.ncc_peak).toFixed(2)}</td><td>${r.area_ha}</td></tr>`).join('')}</table></div></div></div>`;
   const t0 = new Date(rows[0].date); const yrs = rows.map(r => (new Date(r.date) - t0) / 365.25 / 864e5);
   Plotly.react('s2_chart', [
-    { type: 'scatter', mode: 'markers', name: 'Dune body (cross-correlation)', x: rows.map(r => r.date), y: rows.map(r => +r.shift_along_drift_m), marker: { color: NAVY, size: 7 } },
-    { type: 'scatter', mode: 'lines', name: `Linear fit: ${s2.speed_m_per_yr} m/yr`, x: rows.map(r => r.date), y: yrs.map(y => y * s2.speed_m_per_yr), line: { color: NAVY, width: 1.5 } }],
-    { height: 300, margin: { l: 50, r: 0, t: 10, b: 40 }, font: FONT, yaxis: { title: 'Displacement along drift (m)' }, legend: { orientation: 'h', y: 1.12 }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)' }, PL);
+    { type: 'scatter', mode: 'markers', name: tr('Dune body (cross-correlation)', 'Cuerpo de la duna (correlación cruzada)'), x: rows.map(r => r.date), y: rows.map(r => +r.shift_along_drift_m), marker: { color: NAVY, size: 7 } },
+    { type: 'scatter', mode: 'lines', name: tr(`Linear fit: ${s2.speed_m_per_yr} m/yr`, `Ajuste lineal: ${s2.speed_m_per_yr} m/año`), x: rows.map(r => r.date), y: yrs.map(y => y * s2.speed_m_per_yr), line: { color: NAVY, width: 1.5 } }],
+    { height: 300, margin: { l: 50, r: 0, t: 10, b: 40 }, font: FONT, yaxis: { title: tr('Displacement along drift (m)', 'Desplazamiento a lo largo de la deriva (m)') }, legend: { orientation: 'h', y: 1.12 }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)' }, PL);
   $('#scene').addEventListener('input', e => { const r = rows[+e.target.value]; $('#o_scene').textContent = r.date; $('#scene_img').src = `data/sentinel/${r.date}.png`; });
 }
 
@@ -480,7 +485,7 @@ const inPeru = r => r.lat >= -18.5 && r.lat <= 0.1 && r.lon >= -81.5 && r.lon <=
 function ensurePeru() {
   const sel = $('#peru_sel'); const peru = S.res.filter(inPeru);
   sel.innerHTML = peru.map(r => `<option ${r.site === S.peru ? 'selected' : ''}>${r.site}</option>`).join('');
-  if (!peru.length) { $('#peru_info').innerHTML = '<p class="hint">No analyzed site is inside Peru. Add one from the sidebar.</p>'; return; }
+  if (!peru.length) { $('#peru_info').innerHTML = `<p class="hint">${tr('No analyzed site is inside Peru. Add one from the sidebar.', 'Ningún sitio analizado está dentro del Perú. Agrega uno desde el panel lateral.')}</p>`; return; }
   if (!S.peru || !peru.find(r => r.site === S.peru)) S.peru = peru[0].site;
   if (!peruBuilt) {
     peruBuilt = true;
@@ -499,7 +504,7 @@ async function renderPeru() {
   const r = S.res.find(x => x.site === S.peru); if (!r) return;
   maps.peru.setView([r.lat, r.lon], 10); maps.peruMarker.setLatLng([r.lat, r.lon]).setStyle({ color: color(r.score), fillColor: color(r.score) }).bindTooltip(r.site);
   const info = $('#peru_info');
-  info.innerHTML = `<p class="h">${r.site} · ${S.target} score ${r.score} (${r.tier})</p><p class="spin">Querying INGEMMET (their server takes ~30 s per layer)…</p>`;
+  info.innerHTML = `<p class="h">${r.site} · ${tr(`${S.target} score`, `puntaje ${S.target === 'Mars' ? 'Marte' : 'Luna'}`)} ${r.score} (${r.tier})</p><p class="spin">${tr('Querying INGEMMET (their server takes ~30 s per layer)…', 'Consultando al INGEMMET (su servidor tarda ~30 s por capa)…')}</p>`;
   const d = 0.2, tol = 3;
   const results = await Promise.all(Object.entries(ING_SERVICES).map(async ([label, [svc]]) => {
     const q = new URLSearchParams({ geometry: `${r.lon},${r.lat}`, geometryType: 'esriGeometryPoint', sr: 4326, layers: 'all', tolerance: tol,
@@ -508,23 +513,29 @@ async function renderPeru() {
     catch (e) { return [label, null]; }
   }));
   if (S.peru !== r.site) return;
-  info.innerHTML = `<p class="h">${r.site} · ${S.target} score ${r.score} (${r.tier})</p>` + results.map(([label, res]) => {
+  info.innerHTML = `<p class="h">${r.site} · ${tr(`${S.target} score`, `puntaje ${S.target === 'Mars' ? 'Marte' : 'Luna'}`)} ${r.score} (${r.tier})</p>` + results.map(([label, res]) => {
     let body;
-    if (res === null) body = '<p class="hint">INGEMMET service did not respond right now. Try again later or open GEOCATMIN.</p>';
-    else if (!res.length) body = '<p class="hint">No mapped feature found at this point.</p>';
+    if (res === null) body = `<p class="hint">${tr('INGEMMET service did not respond right now. Try again later or open GEOCATMIN.', 'El servicio del INGEMMET no respondió en este momento. Inténtalo más tarde o abre GEOCATMIN.')}</p>`;
+    else if (!res.length) body = `<p class="hint">${tr('No mapped feature found at this point.', 'No se encontró ninguna unidad cartografiada en este punto.')}</p>`;
     else body = res.map(x => { const attrs = Object.entries(x.attributes || {}).filter(([k, v]) => v != null && v !== '' && v !== 'Null' && !/shape|objectid|fid|globalid/i.test(k));
-      return `<details open class="box"><summary>${x.layerName || 'Layer'}</summary><table class="data">${attrs.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table></details>`; }).join('');
+      return `<details open class="box"><summary>${x.layerName || tr('Layer', 'Capa')}</summary><table class="data">${attrs.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}</table></details>`; }).join('');
     return `<p class="h">INGEMMET · ${label}</p>${body}`; }).join('');
 }
 
 // ---------- methodology ----------
 function renderMethod() {
   const W = S.W;
-  $('#method_model').innerHTML = `Each variable becomes a 0–1 similarity, combined with a weighted average.<br>
+  const tm = S.target === 'Mars' ? 'Marte' : 'la Luna';
+  $('#method_model').innerHTML = tr(`Each variable becomes a 0–1 similarity, combined with a weighted average.<br>
     <b>Aridity:</b> exp(−precipitation / ${S.P.arid} mm). <b>Thermal range:</b> daily range / 25 °C, capped at 1.
     <b>Albedo:</b> Gaussian closeness to the target value (${S.alb[S.target]} for ${S.target}). <b>Slope:</b> mean slope at 30 m (Copernicus DEM via Planetary Computer) with full score up to ${S.P.slope}°, penalised above; the 1 km SRTM slope is used only where the 30 m read is missing (user-added sites).
     <b>Altitude:</b> altitude / 4000 m, a proxy for low atmospheric pressure. <b>Wind (aeolian activity):</b> mean 10 m wind / ${S.P.wind} m/s, capped at 1; weight 0 for the Moon.<br>
-    <b>Weights (${S.target}):</b> ${KEYS.map(k => `${LABELS[k]} ${W[k].toFixed(2)}`).join(', ')}.`;
+    <b>Weights (${S.target}):</b> ${KEYS.map(k => `${LABELS[k]} ${W[k].toFixed(2)}`).join(', ')}.`,
+  `Cada variable se convierte en una similitud de 0 a 1, combinada con un promedio ponderado.<br>
+    <b>Aridez:</b> exp(−precipitación / ${S.P.arid} mm). <b>Rango térmico:</b> rango diario / 25 °C, con tope en 1.
+    <b>Albedo:</b> cercanía gaussiana al valor objetivo (${S.alb[S.target]} para ${tm}). <b>Pendiente:</b> pendiente media a 30 m (Copernicus DEM vía Planetary Computer) con puntaje completo hasta ${S.P.slope}°, penalizada por encima; la pendiente SRTM de 1 km solo se usa donde falta la lectura de 30 m (sitios agregados por el usuario).
+    <b>Altitud:</b> altitud / 4000 m, un equivalente de la baja presión atmosférica. <b>Viento (actividad eólica):</b> viento medio a 10 m / ${S.P.wind} m/s, con tope en 1; peso 0 para la Luna.<br>
+    <b>Pesos (${tm}):</b> ${KEYS.map(k => `${LABELS[k]} ${W[k].toFixed(2)}`).join(', ')}.`);
 }
 
 // ---------- main update ----------
@@ -546,8 +557,9 @@ async function init() {
   try {
     const js = await (await fetch('data/sites.json' + DATA_V, { cache: 'no-cache' })).json();
     S.base = js.sites.map(r => { for (const k in r) if (r[k] === null) r[k] = NaN; return r; });
-  } catch (e) { $('#stats').innerHTML = '<p class="err">Could not load data/sites.json.</p>'; return; }
+  } catch (e) { $('#stats').innerHTML = `<p class="err">${tr('Could not load data/sites.json.', 'No se pudo cargar data/sites.json.')}</p>`; return; }
   try { S.s2 = await (await fetch('data/medano_blanco_migration.json' + DATA_V, { cache: 'no-cache' })).json(); S.s2rows = parseCsv(await (await fetch('data/medano_blanco_migration.csv' + DATA_V, { cache: 'no-cache' })).text()); } catch (e) { S.s2 = null; }
   setTarget('Mars', false);
+  try { const t = sessionStorage.getItem('altergea_tab'); if (t) { sessionStorage.removeItem('altergea_tab'); showTab(t); } } catch (e) { /* ignore */ }
 }
 init();

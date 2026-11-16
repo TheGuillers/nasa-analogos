@@ -6,9 +6,9 @@
 
 // ---------- GIBS / Worldview ----------
 const GIBS_LAYERS = [
-  ['NASA Worldview · MODIS Terra true colour', 'MODIS_Terra_CorrectedReflectance_TrueColor'],
-  ['NASA Worldview · VIIRS NOAA-21 true colour', 'VIIRS_NOAA21_CorrectedReflectance_TrueColor'],
-  ['NASA Worldview · VIIRS SNPP true colour', 'VIIRS_SNPP_CorrectedReflectance_TrueColor']];
+  [tr('NASA Worldview · MODIS Terra true colour', 'NASA Worldview · MODIS Terra color real'), 'MODIS_Terra_CorrectedReflectance_TrueColor'],
+  [tr('NASA Worldview · VIIRS NOAA-21 true colour', 'NASA Worldview · VIIRS NOAA-21 color real'), 'VIIRS_NOAA21_CorrectedReflectance_TrueColor'],
+  [tr('NASA Worldview · VIIRS SNPP true colour', 'NASA Worldview · VIIRS SNPP color real'), 'VIIRS_SNPP_CorrectedReflectance_TrueColor']];
 const NASA = { layers: [], date: (() => { const d = new Date(Date.now() - 2 * 864e5); return d.toISOString().slice(0, 10); })() };
 const gibsUrl = (id, date) => `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${id}/default/${date}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`;
 function gibsOverlays() {
@@ -39,26 +39,26 @@ function initNasaControls() {
 
 // ---------- Earthdata CMR ----------
 const CMR = 'https://cmr.earthdata.nasa.gov/search';
-const CMR_SETS = [['MOD09GA', '061', 'MODIS Terra surface reflectance, daily 500 m'],
-  ['HLSL30', '2.0', 'Harmonized Landsat 30 m'], ['HLSS30', '2.0', 'Harmonized Sentinel-2 30 m']];
+const CMR_SETS = [['MOD09GA', '061', tr('MODIS Terra surface reflectance, daily 500 m', 'MODIS Terra reflectancia superficial, diaria 500 m')],
+  ['HLSL30', '2.0', tr('Harmonized Landsat 30 m', 'Harmonized Landsat 30 m')], ['HLSS30', '2.0', 'Harmonized Sentinel-2 30 m']];
 async function cmrGet(path) {
   const r = await fetch(`${CMR}/${path}`); if (!r.ok) throw new Error(r.status);
   return { hits: +r.headers.get('cmr-hits') || 0, entries: (await r.json()).feed.entry };
 }
 async function nasaDataBlock(lat, lon, el) {
   const d = 0.05, bb = `${(lon - d).toFixed(4)},${(lat - d).toFixed(4)},${(lon + d).toFixed(4)},${(lat + d).toFixed(4)}`;
-  const links = `<a href="${earthdataSearchUrl(lat, lon)}" target="_blank" rel="noopener">Open in Earthdata Search</a> ·
-    <a class="wv_link" data-lat="${lat}" data-lon="${lon}" href="${worldviewUrl(lat, lon)}" target="_blank" rel="noopener">Open in Worldview</a>`;
-  el.innerHTML = `<p class="hint">Querying NASA Earthdata (CMR)…</p>`;
+  const links = `<a href="${earthdataSearchUrl(lat, lon)}" target="_blank" rel="noopener">${tr('Open in Earthdata Search', 'Abrir en Earthdata Search')}</a> ·
+    <a class="wv_link" data-lat="${lat}" data-lon="${lon}" href="${worldviewUrl(lat, lon)}" target="_blank" rel="noopener">${tr('Open in Worldview', 'Abrir en Worldview')}</a>`;
+  el.innerHTML = `<p class="hint">${tr('Querying NASA Earthdata (CMR)…', 'Consultando NASA Earthdata (CMR)…')}</p>`;
   try {
     const [col, ...gr] = await Promise.all([cmrGet(`collections.json?bounding_box=${bb}&page_size=1`),
       ...CMR_SETS.map(([sn, v]) => cmrGet(`granules.json?short_name=${sn}&version=${v}&bounding_box=${bb}&page_size=1&sort_key=-start_date`))]);
-    const rows = CMR_SETS.map(([sn, v, label], i) => `<tr><td><b>${sn}</b> ${label}</td><td>${gr[i].hits.toLocaleString('en')}</td>
-      <td>${gr[i].entries[0] ? gr[i].entries[0].time_start.slice(0, 10) : 'n/a'}</td></tr>`).join('');
-    el.innerHTML = `<p class="h">NASA Earthdata over this site <span class="hint">(live, CMR)</span></p>
-      <p class="hint">${col.hits.toLocaleString('en')} Earthdata collections intersect a ~11 km box around the site. ${links}</p>
-      <div class="tbl-wrap"><table class="data"><tr><th>Dataset</th><th>Granules</th><th>Latest</th></tr>${rows}</table></div>`;
-  } catch (e) { el.innerHTML = `<p class="hint">Earthdata CMR did not answer. ${links}</p>`; }
+    const rows = CMR_SETS.map(([sn, v, label], i) => `<tr><td><b>${sn}</b> ${label}</td><td>${gr[i].hits.toLocaleString(numLocale())}</td>
+      <td>${gr[i].entries[0] ? gr[i].entries[0].time_start.slice(0, 10) : tr('n/a', 'n/d')}</td></tr>`).join('');
+    el.innerHTML = `<p class="h">${tr('NASA Earthdata over this site', 'NASA Earthdata sobre este sitio')} <span class="hint">${tr('(live, CMR)', '(en vivo, CMR)')}</span></p>
+      <p class="hint">${col.hits.toLocaleString(numLocale())} ${tr('Earthdata collections intersect a ~11 km box around the site.', 'colecciones de Earthdata intersectan un recuadro de ~11 km alrededor del sitio.')} ${links}</p>
+      <div class="tbl-wrap"><table class="data"><tr><th>${tr('Dataset', 'Conjunto de datos')}</th><th>${tr('Granules', 'Gránulos')}</th><th>${tr('Latest', 'Último')}</th></tr>${rows}</table></div>`;
+  } catch (e) { el.innerHTML = `<p class="hint">${tr('Earthdata CMR did not answer.', 'Earthdata CMR no respondió.')} ${links}</p>`; }
 }
 
 // ---------- PDS Geosciences Node · Orbital Data Explorer ----------
@@ -80,15 +80,15 @@ async function odeSite(s, h = 0.25) {
   return { dtm: +cnt.ODEResults.Count || 0, rdr: +rdr.ODEResults.Count || 0, list };
 }
 async function odeBlock(el) {
-  el.innerHTML = '<p class="hint">Querying the PDS Orbital Data Explorer…</p>';
+  el.innerHTML = `<p class="hint">${tr('Querying the PDS Orbital Data Explorer…', 'Consultando el PDS Orbital Data Explorer…')}</p>`;
   try {
     const res = await Promise.all(MEP_SITES.map(s => odeSite(s)));
-    el.innerHTML = `<table class="data"><tr><th>Mars Exploration Program site</th><th>HiRISE DTMs</th><th>HiRISE images</th><th>Nearest DTMs (PDS)</th></tr>` +
+    el.innerHTML = `<table class="data"><tr><th>${tr('Mars Exploration Program site', 'Sitio del Programa de Exploración de Marte')}</th><th>${tr('HiRISE DTMs', 'DTM HiRISE')}</th><th>${tr('HiRISE images', 'Imágenes HiRISE')}</th><th>${tr('Nearest DTMs (PDS)', 'DTM más cercanos (PDS)')}</th></tr>` +
       MEP_SITES.map((s, i) => `<tr><td>${s.name}<br><span class="hint">${s.lat}°, ${s.lon}°E</span></td><td>${res[i].dtm}</td><td>${res[i].rdr}</td>
-        <td>${res[i].list.map(p => `<a href="${p.FilesURL}" target="_blank" rel="noopener">${(p.LabelFileName || '').replace(/\.img$/i, '').toUpperCase()}</a>`).join('<br>') || 'none within ±0.25°'}</td></tr>`).join('') +
-      `</table><p class="hint">Live from the PDS Geosciences Node (ODE REST), counts within ±0.25° of each site. A HiRISE DTM is what allows a Mars slope and
-      roughness at the same ~30 m scale as the Earth side, so sites with DTMs are the ones the model can compare like for like.</p>`;
-  } catch (e) { el.innerHTML = '<p class="hint">The PDS Orbital Data Explorer did not answer. Try again later.</p>'; }
+        <td>${res[i].list.map(p => `<a href="${p.FilesURL}" target="_blank" rel="noopener">${(p.LabelFileName || '').replace(/\.img$/i, '').toUpperCase()}</a>`).join('<br>') || tr('none within ±0.25°', 'ninguno dentro de ±0.25°')}</td></tr>`).join('') +
+      `</table><p class="hint">${tr(`Live from the PDS Geosciences Node (ODE REST), counts within ±0.25° of each site. A HiRISE DTM is what allows a Mars slope and
+      roughness at the same ~30 m scale as the Earth side, so sites with DTMs are the ones the model can compare like for like.`, `En vivo desde el PDS Geosciences Node (ODE REST), conteos a ±0.25° de cada sitio. Un DTM HiRISE permite obtener pendiente y rugosidad de Marte a la misma escala de ~30 m que en la Tierra, así que los sitios con DTM son los que el modelo puede comparar en igualdad de condiciones.`)}</p>`;
+  } catch (e) { el.innerHTML = `<p class="hint">${tr('The PDS Orbital Data Explorer did not answer. Try again later.', 'El PDS Orbital Data Explorer no respondió. Inténtalo más tarde.')}</p>`; }
 }
 function addMepMarkers(map) {
   MEP_SITES.forEach(s => {

@@ -1,248 +1,311 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+
+<html lang="en" data-theme="space">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>ALTERGEA · Analog Site Intelligence</title>
-<meta name="description" content="Earth analog site intelligence for permanent Moon and Mars bases. NASA Space Apps 2026, Piura.">
-<link rel="icon" href="logo.jpg">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-<link rel="stylesheet" href="styles.css?v=20261121">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1, viewport-fit=cover" name="viewport"/>
+<title>ALTERGEA · Earth analogues for the Moon and Mars</title>
+<meta content="Earth analog site intelligence for permanent Moon and Mars bases. NASA Space Apps 2026, Piura." name="description"/>
+<link href="logo.jpg" rel="icon"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link crossorigin="" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet"/>
+<link href="styles.css?v=20261122" rel="stylesheet"/>
 </head>
 <body>
-<div class="shell">
-  <aside class="side" id="side">
-    <div class="side-head">
-      <img class="logo" src="logo.jpg" alt="ALTERGEA" width="140">
-      <h3>Mission control</h3>
-      <button class="side-toggle" id="side_toggle" aria-expanded="false" aria-controls="side_body">Controls</button>
+<header class="top">
+  <a class="brand" href="#top" aria-label="ALTERGEA"><img src="logo.jpg" alt="" width="34" height="34"><span>ALTERGEA</span></a>
+  <nav class="top-nav" aria-label="Sections">
+    <a href="#app" data-go="map" data-i="n_map">Mission Map</a>
+    <a href="#app" data-go="twin" data-i="n_twin">Mars twin</a>
+    <a href="#app" data-go="method" data-i="n_method">Methodology</a>
+  </nav>
+  <div class="lang" role="group" aria-label="Language">
+    <button type="button" data-lang="en" class="is-on" aria-pressed="true">EN</button>
+    <button type="button" data-lang="es" aria-pressed="false">ES</button>
+  </div>
+</header>
+
+<section class="hero" id="top">
+  <canvas class="stars" id="stars" aria-hidden="true"></canvas>
+  <div class="hero-in">
+    <div class="hero-copy">
+      <p class="eyebrow" data-i="h_eyebrow">NASA Space Apps Challenge 2026 · Piura, Peru</p>
+      <h1 data-i="h_title">Earth analogues for the <em>Moon</em> and <em class="mars">Mars</em></h1>
+      <p class="lead" data-i="h_lead">We rank places on Earth by how closely they resemble permanent lunar bases and Mars exploration sites, using open NASA data, and propose a flagship test bed 50 km from Piura: the Médano Blanco dunes, a twin of Curiosity's Bagnold Dunes.</p>
+      <div class="cta">
+        <button type="button" class="btn-hero" data-go="map" data-i="h_cta1">Explore the mission map</button>
+        <button type="button" class="btn-ghost" data-go="twin" data-i="h_cta2">Meet the Mars twin</button>
+      </div>
+      <ul class="kpis">
+        <li><b>14</b><span data-i="k1">sites scored</span></li>
+        <li><b>6</b><span data-i="k2">in Peru</span></li>
+        <li><b>2018–26</b><span data-i="k3">Sentinel-2 series</span></li>
+        <li><b>6</b><span data-i="k4">NASA data sources</span></li>
+      </ul>
     </div>
-    <div class="side-body" id="side_body">
-    <label class="lbl">Mission target</label>
-    <div class="seg" role="radiogroup" aria-label="Mission target">
-      <button class="seg-btn is-on" data-target="Mars" role="radio" aria-checked="true">Mars</button>
-      <button class="seg-btn" data-target="Moon" role="radio" aria-checked="false">Moon</button>
+    <div class="orrery" aria-hidden="true">
+      <div class="ring r1"></div><div class="ring r2"></div>
+      <figure class="pl earth"><canvas data-planet="earth"></canvas><figcaption data-i="pl_earth">Earth</figcaption></figure>
+      <figure class="pl mars"><canvas data-planet="mars"></canvas><figcaption data-i="pl_mars">Mars</figcaption></figure>
+      <figure class="pl moon"><canvas data-planet="moon"></canvas><figcaption data-i="pl_moon">Moon</figcaption></figure>
     </div>
+  </div>
+  <div class="pillars">
+    <article><span class="num">01</span><h2 data-i="p1t">Score</h2><p data-i="p1">14 sites compared with Mars and Moon conditions: aridity, thermal range, albedo, slope, altitude and wind, with adjustable weights.</p></article>
+    <article><span class="num">02</span><h2 data-i="p2t">Pair</h2><p data-i="p2">Médano Blanco (Sechura) against the Bagnold Dunes of Gale crater, side by side in Sentinel-2, Esri, CTX and HiRISE imagery.</p></article>
+    <article><span class="num">03</span><h2 data-i="p3t">Measure</h2><p data-i="p3">Our own dune-migration measurement from eight years of Sentinel-2, compared with MINAM figures and HiRISE on Mars.</p></article>
+  </div>
+</section>
 
-    <label class="lbl" style="display:flex;gap:.5em;align-items:center;margin-top:12px"><input type="checkbox" id="only_piura"> Show only Piura</label>
-    <p class="hint" id="piura_hint" hidden></p>
-    <label class="lbl" for="gibs_date" style="margin-top:12px">NASA Worldview imagery date</label>
-    <input type="date" id="gibs_date">
-
-    <details class="box">
-      <summary>Model parameters</summary>
-      <div id="weights"></div>
-      <label class="lbl">Operational slope limit <output id="o_slope">10</output>°</label>
-      <input type="range" id="p_slope" min="2" max="25" step="1" value="10">
-      <label class="lbl">Aridity scale <output id="o_arid">150</output> mm/yr</label>
-      <input type="range" id="p_arid" min="50" max="500" step="10" value="150">
-      <label class="lbl">Sand-transport wind at 10 m <output id="o_wind">6.0</output> m/s</label>
-      <input type="range" id="p_wind" min="3" max="10" step="0.5" value="6">
-      <label class="lbl">Target albedo <output id="o_alb">0.25</output></label>
-      <input type="range" id="p_alb" min="0.05" max="0.40" step="0.01" value="0.25">
-      <button class="btn-link" id="reset_params">Reset to defaults</button>
-    </details>
-
-    <details class="box">
-      <summary>Analyze your own site</summary>
-      <label class="lbl" for="c_name">Name</label>
-      <input type="text" id="c_name" value="My site">
-      <label class="lbl" for="c_lat">Latitude</label>
-      <input type="number" id="c_lat" step="0.0001" value="-5.0" min="-90" max="90">
-      <label class="lbl" for="c_lon">Longitude</label>
-      <input type="number" id="c_lon" step="0.0001" value="-80.0" min="-180" max="180">
-      <button class="btn" id="add_site">Fetch NASA data and add</button>
-      <button class="btn-link" id="clear_sites">Clear custom sites</button>
-      <p class="hint" id="add_status"></p>
-    </details>
-
-    <p class="hint">Data: NASA POWER · SRTM/ASTER elevation · NASA Mars Trek (CTX, HiRISE, MOLA) · NASA GIBS (MODIS) ·
+<div class="shell" id="app">
+<aside class="side" id="side">
+<div class="side-head">
+<img alt="ALTERGEA" class="logo" src="logo.jpg" width="140"/>
+<h3 data-i="t001">Mission control</h3>
+<button aria-controls="side_body" aria-expanded="false" class="side-toggle" data-i="t002" id="side_toggle">Controls</button>
+</div>
+<div class="side-body" id="side_body">
+<label class="lbl" data-i="t003">Mission target</label>
+<div aria-label="Mission target" class="seg" role="radiogroup">
+<button aria-checked="true" class="seg-btn is-on" data-i="t004" data-target="Mars" role="radio">Mars</button>
+<button aria-checked="false" class="seg-btn" data-i="t005" data-target="Moon" role="radio">Moon</button>
+</div>
+<label class="lbl" style="display:flex;gap:.5em;align-items:center;margin-top:12px"><input id="only_piura" type="checkbox"/> <span data-i="t006">Show only Piura</span></label>
+<p class="hint" hidden="" id="piura_hint"></p>
+<label class="lbl" data-i="t007" for="gibs_date" style="margin-top:12px">NASA Worldview imagery date</label>
+<input id="gibs_date" type="date"/>
+<details class="box">
+<summary data-i="t008">Model parameters</summary>
+<div id="weights"></div>
+<label class="lbl"><span data-i="t009">Operational slope limit</span> <output id="o_slope">10</output><span data-i="t010">°</span></label>
+<input id="p_slope" max="25" min="2" step="1" type="range" value="10"/>
+<label class="lbl"><span data-i="t011">Aridity scale</span> <output id="o_arid">150</output> <span data-i="t012">mm/yr</span></label>
+<input id="p_arid" max="500" min="50" step="10" type="range" value="150"/>
+<label class="lbl"><span data-i="t013">Sand-transport wind at 10 m</span> <output id="o_wind">6.0</output> <span data-i="t014">m/s</span></label>
+<input id="p_wind" max="10" min="3" step="0.5" type="range" value="6"/>
+<label class="lbl"><span data-i="t015">Target albedo</span> <output id="o_alb">0.25</output></label>
+<input id="p_alb" max="0.40" min="0.05" step="0.01" type="range" value="0.25"/>
+<button class="btn-link" data-i="t016" id="reset_params">Reset to defaults</button>
+</details>
+<details class="box">
+<summary data-i="t017">Analyze your own site</summary>
+<label class="lbl" data-i="t018" for="c_name">Name</label>
+<input id="c_name" type="text" value="My site"/>
+<label class="lbl" data-i="t019" for="c_lat">Latitude</label>
+<input id="c_lat" max="90" min="-90" step="0.0001" type="number" value="-5.0"/>
+<label class="lbl" data-i="t020" for="c_lon">Longitude</label>
+<input id="c_lon" max="180" min="-180" step="0.0001" type="number" value="-80.0"/>
+<button class="btn" data-i="t021" id="add_site">Fetch NASA data and add</button>
+<button class="btn-link" data-i="t022" id="clear_sites">Clear custom sites</button>
+<p class="hint" id="add_status"></p>
+</details>
+<p class="hint" data-i="t023">Data: NASA POWER · SRTM/ASTER elevation · NASA Mars Trek (CTX, HiRISE, MOLA) · NASA GIBS (MODIS) ·
       Copernicus Sentinel-2 · INGEMMET GEOCATMIN · MINAM. Thresholds and weights are documented assumptions (see Methodology).</p>
-    </div>
-  </aside>
-
-  <main class="main">
-    <div class="mast"><p class="wordmark">ALTERGEA</p>
-      <p class="desc">Earth analog site intelligence for permanent Moon and Mars bases</p></div>
-    <p class="meta">NASA Space Apps 2026, Piura &nbsp;·&nbsp; Target <b id="m_target">Mars</b> &nbsp;·&nbsp;
-      <b id="m_n">14</b> sites &nbsp;·&nbsp; NASA POWER, SRTM, Planetary Computer (Copernicus DEM, Sentinel-2), Mars Trek, GIBS, INGEMMET, MINAM</p>
-    <div class="rule"></div>
-
-    <div class="stats" id="stats"></div>
-
-    <nav class="tabs" role="tablist">
-      <button class="tab is-on" data-tab="map" role="tab">Mission Map</button>
-      <button class="tab" data-tab="rank" role="tab">Ranking</button>
-      <button class="tab" data-tab="explore" role="tab">Similarity explorer</button>
-      <button class="tab" data-tab="twin" role="tab">Mars twin: Médano Blanco ↔ Bagnold</button>
-      <button class="tab" data-tab="peru" role="tab">Peru geology (INGEMMET)</button>
-      <button class="tab" data-tab="method" role="tab">Methodology</button>
-    </nav>
-
-    <!-- MAP -->
-    <section class="panel is-on" id="tab-map" role="tabpanel">
-      <div class="row">
-        <label class="lbl grow">Show top N sites <output id="o_topn">14</output></label>
-        <input type="range" id="topn" min="3" max="14" value="14" class="grow">
-        <label class="lbl" for="focus_sel">Focus on a site (or click its marker)</label>
-        <select id="focus_sel"><option value="">— none —</option></select>
-      </div>
-      <div class="legend" id="legend"></div>
-      <div class="map-row">
-        <div id="map" class="map"></div>
-        <div class="top-list"><p class="h"><span id="top_title">Top sites for Mars</span></p><table id="top_table"></table></div>
-        <div id="focus" class="focus" hidden></div>
-      </div>
-    </section>
-
-    <!-- RANKING -->
-    <section class="panel" id="tab-rank" role="tabpanel">
-      <div class="two">
-        <div><p class="h" id="rank_title">Similarity to Mars</p><div id="rank_bar"></div></div>
-        <div><p class="h">Dual-target matrix: which sites serve both worlds?</p><div id="rank_scatter"></div></div>
-      </div>
-      <p class="h">All variables</p>
-      <div class="tbl-wrap"><table id="rank_table" class="data"></table></div>
-      <button class="btn-link" id="dl_csv">Download results (CSV)</button>
-    </section>
-
-    <!-- EXPLORER -->
-    <section class="panel" id="tab-explore" role="tabpanel">
-      <p id="ex_intro"></p>
-      <div class="row wrap">
-        <div class="chips" id="ex_sites"></div>
-      </div>
-      <div class="row wrap" id="ex_vars"></div>
-      <div class="stats" id="ex_overall"></div>
-      <div class="two">
-        <div id="ex_bar"></div>
-        <div id="ex_radar"></div>
-      </div>
-      <div class="tbl-wrap"><table id="ex_table" class="data"></table></div>
-      <div id="ex_h2h"></div>
-    </section>
-
-    <!-- TWIN -->
-    <section class="panel" id="tab-twin" role="tabpanel">
-      <p><b>Proposed analog: Médano Blanco (Sechura, Piura) ↔ Bagnold Dunes (Gale crater, Mars).</b> Both are
+</div>
+</aside>
+<main class="main">
+<div class="stats" id="stats"></div>
+<nav class="tabs" role="tablist">
+<button class="tab is-on" data-i="t027" data-tab="map" role="tab">Mission Map</button>
+<button class="tab" data-i="t028" data-tab="rank" role="tab">Ranking</button>
+<button class="tab" data-i="t029" data-tab="explore" role="tab">Similarity explorer</button>
+<button class="tab" data-i="t030" data-tab="twin" role="tab">Mars twin: Médano Blanco ↔ Bagnold</button>
+<button class="tab" data-i="t031" data-tab="peru" role="tab">Peru geology (INGEMMET)</button>
+<button class="tab" data-i="t_m2020" data-tab="m2020" role="tab">Mars 2020 cameras</button>
+<button class="tab" data-i="t032" data-tab="method" role="tab">Methodology</button>
+</nav>
+<!-- MAP -->
+<section class="panel is-on" id="tab-map" role="tabpanel">
+<div class="row">
+<label class="lbl grow"><span data-i="t033">Show top N sites</span> <output id="o_topn">14</output></label>
+<input class="grow" id="topn" max="14" min="3" type="range" value="14"/>
+<label class="lbl" data-i="t034" for="focus_sel">Focus on a site (or click its marker)</label>
+<select id="focus_sel"><option value="">— none —</option></select>
+</div>
+<div class="legend" id="legend"></div>
+<div class="map-row">
+<div class="map" id="map"></div>
+<div class="top-list"><p class="h"><span id="top_title">Top sites for Mars</span></p><table id="top_table"></table></div>
+<div class="focus" hidden="" id="focus"></div>
+</div>
+</section>
+<!-- RANKING -->
+<section class="panel" id="tab-rank" role="tabpanel">
+<div class="two">
+<div><p class="h" id="rank_title">Similarity to Mars</p><div id="rank_bar"></div></div>
+<div><p class="h" data-i="t036">Dual-target matrix: which sites serve both worlds?</p><div id="rank_scatter"></div></div>
+</div>
+<p class="h" data-i="t037">All variables</p>
+<div class="tbl-wrap"><table class="data" id="rank_table"></table></div>
+<button class="btn-link" data-i="t038" id="dl_csv">Download results (CSV)</button>
+</section>
+<!-- EXPLORER -->
+<section class="panel" id="tab-explore" role="tabpanel">
+<p id="ex_intro"></p>
+<div class="row wrap">
+<div class="chips" id="ex_sites"></div>
+</div>
+<div class="row wrap" id="ex_vars"></div>
+<div class="stats" id="ex_overall"></div>
+<div class="two">
+<div id="ex_bar"></div>
+<div id="ex_radar"></div>
+</div>
+<div class="tbl-wrap"><table class="data" id="ex_table"></table></div>
+<div id="ex_h2h"></div>
+</section>
+<!-- TWIN -->
+<section class="panel" id="tab-twin" role="tabpanel">
+<p data-i="t039"><b>Proposed analog: Médano Blanco (Sechura, Piura) ↔ Bagnold Dunes (Gale crater, Mars).</b> Both are
         <i>active</i> barchan dune fields shaped by steady wind. Bagnold was the first active dune field studied in situ
         on another planet (Curiosity, 2015–2017).</p>
-      <div class="three">
-        <div><p class="h">What makes the analogy strong</p><p>Same landform and process: active barchans and linear
+<div class="three">
+<div><p class="h" data-i="t040">What makes the analogy strong</p><p data-i="t041">Same landform and process: active barchans and linear
           dunes built by a persistent wind regime, loose sand that traps wheels, slipfaces and metre-scale ripples.
           Measured migration on both bodies (Sentinel-2, MINAM; HiRISE).</p></div>
-        <div><p class="h">Where it fails</p><p>Composition (quartz vs basalt–olivine), atmosphere (1 bar vs 6 mbar:
+<div><p class="h" data-i="t042">Where it fails</p><p data-i="t043">Composition (quartz vs basalt–olivine), atmosphere (1 bar vs 6 mbar:
           Mars sand moves rarely), gravity, no vegetation on Mars. Médano Blanco is a protected tourism site with use
           restrictions.</p></div>
-        <div><p class="h">How it helps exploration</p><p>A field for rover mobility and sand-trap recovery drills (the
+<div><p class="h" data-i="t044">How it helps exploration</p><p data-i="t045">A field for rover mobility and sand-trap recovery drills (the
           Spirit failure mode), dune-crossing path planning, dust and bedform change-detection methods, and for
           calibrating orbital measurements against ground truth, 50 km from Piura.</p></div>
-      </div>
-      <div class="two">
-        <div><p class="h">Earth · Médano Blanco · −5.554, −80.757 · Esri imagery, NASA GIBS, INGEMMET</p><div id="map_earth" class="map sm"></div></div>
-        <div><p class="h">Mars · Bagnold Dunes, Gale · Namib Dune −4.680, 137.367 · NASA Mars Trek tiles</p><div id="map_mars" class="map sm"></div>
-          <p class="hint">Toggle layers (top right): CTX mosaic of Gale, HiRISE mosaic of the Curiosity roving site,
+</div>
+<div class="two">
+<div><p class="h" data-i="t046">Earth · Médano Blanco · −5.554, −80.757 · Esri imagery, NASA GIBS, INGEMMET</p><div class="map sm" id="map_earth"></div></div>
+<div><p class="h" data-i="t047">Mars · Bagnold Dunes, Gale · Namib Dune −4.680, 137.367 · NASA Mars Trek tiles</p><div class="map sm" id="map_mars"></div>
+<p class="hint" data-i="t048">Toggle layers (top right): CTX mosaic of Gale, HiRISE mosaic of the Curiosity roving site,
             HiRISE 1 m DEM. Zoom in on the dark band south-west of the marker to see the dunes.</p></div>
-      </div>
-      <p class="h">Dune migration: Earth vs Mars (measured, not modelled)</p>
-      <div class="two">
-        <div><div id="mig_bar"></div>
-          <p class="hint">Earth: MINAM / Expediciones al Desierto (2022), Google Earth 2006–2022, and ALTERGEA's own
+</div>
+<p class="h" data-i="t049">Dune migration: Earth vs Mars (measured, not modelled)</p>
+<div class="two">
+<div><div id="mig_bar"></div>
+<p class="hint" data-i="t050">Earth: MINAM / Expediciones al Desierto (2022), Google Earth 2006–2022, and ALTERGEA's own
             Sentinel-2 measurement. Mars: Silvestro et al. (2013, HiRISE) as summarised by Bridges et al. (2018);
             ripple range from Baker et al. (2018).</p></div>
-        <div class="tbl-wrap"><table id="cmp_table" class="data"></table></div>
-      </div>
-      <p class="h">NASA Earthdata over Médano Blanco</p>
-      <div id="nasa_twin"></div>
-      <p class="h">Mars Exploration Program sites in the PDS archive</p>
-      <div id="pds_block" class="tbl-wrap"></div>
-      <div id="s2_block"></div>
-      <div class="note"><b>Honest framing.</b> The analogy is morphological and process-based (barchans, steady wind,
+<div class="tbl-wrap"><table class="data" id="cmp_table"></table></div>
+</div>
+<p class="h" data-i="t051">NASA Earthdata over Médano Blanco</p>
+<div id="nasa_twin"></div>
+<p class="h" data-i="t052">Mars Exploration Program sites in the PDS archive</p>
+<div class="tbl-wrap" id="pds_block"></div>
+<div id="s2_block"></div>
+<div class="note" data-i="t053"><b>Honest framing.</b> The analogy is morphological and process-based (barchans, steady wind,
         loose sand), not mineralogical: Bagnold sand is basaltic and olivine-rich, Médano Blanco is quartz sand
         (INGEMMET unit Q-eo). Gale is a rover science site, so the pitch is <i>training field for mobility and
         operations in sand that any Mars base will face</i>. Compare slope and roughness at matched resolution
         (HiRISE DTM resampled to 30 m vs Copernicus 30 m), never MOLA 463 m vs SRTM 30 m.</div>
-    </section>
-
-    <!-- PERU -->
-    <section class="panel" id="tab-peru" role="tabpanel">
-      <p><b>Geological context from INGEMMET (Peru Geological Survey, GEOCATMIN)</b> · complements the NASA-based
+</section>
+<!-- PERU -->
+<section class="panel" id="tab-peru" role="tabpanel">
+<p data-i="t054"><b>Geological context from INGEMMET (Peru Geological Survey, GEOCATMIN)</b> · complements the NASA-based
         score with 1:100k geology and geomorphology.</p>
-      <div class="row"><label class="lbl" for="peru_sel">Peruvian site</label><select id="peru_sel"></select>
-        <a class="btn-link" href="https://geocatmin.ingemmet.gob.pe" target="_blank" rel="noopener">Open GEOCATMIN viewer</a></div>
-      <div class="two"><div id="map_peru" class="map"></div><div id="peru_info"></div></div>
+<div class="row"><label class="lbl" data-i="t055" for="peru_sel">Peruvian site</label><select id="peru_sel"></select>
+<a class="btn-link" data-i="t056" href="https://geocatmin.ingemmet.gob.pe" rel="noopener" target="_blank">Open GEOCATMIN viewer</a></div>
+<div class="two"><div class="map" id="map_peru"></div><div id="peru_info"></div></div>
+</section>
+<!-- MARS 2020 CAMERAS -->
+    <section class="panel" id="tab-m2020" role="tabpanel">
+      <p data-i="m36"><b>Mars 2020 · Perseverance cameras.</b> Source: <i>Mars 2020 Camera Data Products SIS</i> (JPL D-99960, v3.7, July 2025), the reference document of the NASA PDS Geosciences Node for every image the rover and the Ingenuity helicopter return. 25 cameras in total; the figures below come straight from its instrument tables.</p>
+      <div class="tbl-wrap"><table class="data" id="m2020_table">
+<tr><th><span data-i="m01">Camera</span></th><th><span data-i="m02">No.</span></th><th><span data-i="m03">Location</span></th><th><span data-i="m04">Resolution (px)</span></th><th><span data-i="m05">Field of view</span></th><th><span data-i="m06">Scale</span></th><th><span data-i="m07">Main use</span></th></tr>
+<tr><td><b>Navcam</b></td><td>2</td><td><span data-i="m08">Stereo pair on the mast</span></td><td>5120 × 3840</td><td>96° × 73°</td><td>0.33 mrad/px</td><td><span data-i="m09">Navigation and 360° site panoramas</span></td></tr>
+<tr><td><b>Front Hazcam</b></td><td>4</td><td><span data-i="m10">Front of the rover body</span></td><td>5120 × 3840</td><td>136° × 102°</td><td>0.46 mrad/px</td><td><span data-i="m11">Hazard avoidance: terrain right ahead of the wheels</span></td></tr>
+<tr><td><b>Rear Hazcam</b></td><td>2</td><td><span data-i="m12">Rear of the rover body</span></td><td>5120 × 3840</td><td>136° × 102°</td><td>0.46 mrad/px</td><td><span data-i="m13">Hazard avoidance behind the rover</span></td></tr>
+<tr><td><b>Mastcam-Z</b></td><td>2</td><td><span data-i="m14">Zoomable stereo pair on the mast</span></td><td>1648 × 1200</td><td>25.6° × 19.1° (wide) to 6.2° × 4.6° (narrow)</td><td>283 to 67 µrad/px (26–110 mm zoom)</td><td><span data-i="m15">Colour and multispectral imaging (442–1022 nm), 3D context, geology at a distance</span></td></tr>
+<tr><td><b>SuperCam RMI</b></td><td>1</td><td><span data-i="m16">On the mast</span></td><td>2048 × 2048</td><td>≈ 1.1° (18.8 mrad)</td><td>≈ 2.5 mm at 1.56 m · ≈ 10.5 cm at 10 m</td><td><span data-i="m17">Greyscale close-ups of targets and laser spots</span></td></tr>
+<tr><td><b>CacheCam</b></td><td>1</td><td><span data-i="m18">Inside the rover body</span></td><td>5120 × 3840</td><td>65 × 49 mm</td><td>12.5 µm/px</td><td><span data-i="m19">Inspects sample tubes before sealing</span></td></tr>
+<tr><td><b>SHERLOC WATSON</b></td><td>1</td><td><span data-i="m20">Robotic arm turret</span></td><td>1648 × 1200</td><td>≈ 31° × 23°</td><td>15.9 µm/px at 25 mm</td><td><span data-i="m21">Hand-lens close-ups of rock texture and grains</span></td></tr>
+<tr><td><b>SHERLOC ACI</b></td><td>1</td><td><span data-i="m22">Robotic arm turret</span></td><td>1648 × 1200</td><td>7.9° × 10.6°</td><td>10.1 µm/px at 48 mm</td><td><span data-i="m23">Greyscale context for the spectrometer</span></td></tr>
+<tr><td><b>PIXL MCC</b></td><td>1</td><td><span data-i="m24">Robotic arm turret</span></td><td>752 × 580</td><td>37.6° × 28.4°</td><td>0.91 × 0.87 mrad/px</td><td><span data-i="m25">Context image for X-ray fluorescence mapping</span></td></tr>
+<tr><td><b>MEDA SkyCam</b></td><td>1</td><td><span data-i="m26">Rover deck, looking up</span></td><td>1024 × 1024</td><td>124° × 124°</td><td>2.1 mrad/px</td><td><span data-i="m27">Sky, clouds and dust for weather monitoring</span></td></tr>
+<tr><td><b>EDL cameras</b></td><td>6</td><td><span data-i="m28">Backshell, descent stage and rover</span></td><td>1280 × 1024 (DDC 2048 × 1536)</td><td>≈ 35° × 30° (DDC ≈ 48° × 37°)</td><td>≈ 0.5 mrad/px (DDC ≈ 0.4)</td><td><span data-i="m29">Entry, descent and landing video; two keep imaging the surface</span></td></tr>
+<tr><td><b>LCAM</b></td><td>1</td><td><span data-i="m30">Front-left corner of the rover</span></td><td>1024 × 1024</td><td>90° × 90°</td><td>—</td><td><span data-i="m31">Terrain-relative navigation during landing (greyscale)</span></td></tr>
+<tr><td><b>Helicopter Nav</b></td><td>1</td><td><span data-i="m32">Looking down from Ingenuity</span></td><td>640 × 480</td><td>133° × 100°</td><td>3.6 mrad/px</td><td><span data-i="m33">Position and attitude for the helicopter (greyscale)</span></td></tr>
+<tr><td><b>Helicopter RTE</b></td><td>1</td><td><span data-i="m34">Side-looking on Ingenuity</span></td><td>4224 × 3120</td><td>101° × 82°</td><td>0.53 mrad/px</td><td><span data-i="m35">Colour aerial photos of the terrain</span></td></tr>
+</table></div>
+      <p class="hint" data-i="m37">Angular scale converts to ground scale by multiplying by distance: 0.33 mrad/px on a Navcam frame is about 3.3 cm per pixel at 100 m. Mastcam-Z narrow zoom reaches about 0.13 mm/px at 2 m and 6.7 mm/px at 100 m.</p>
+      <div class="three">
+        <div><p class="h" data-i="m38">Why it matters for analogue sites</p><p data-i="m39">Comparing an Earth site with Mars only works at matched scale. Knowing each camera field of view and pixels per metre tells you which Earth photos (drone, ground, Sentinel-2 cut-outs) are like for like with a Perseverance frame.</p></div>
+        <div><p class="h" data-i="m40">EDR and RDR products</p><p data-i="m41">EDR (Experiment Data Record) is the raw image as downlinked; RDR (Reduced Data Record) is calibrated or derived: colour, stereo anaglyphs, disparity and range maps, meshes and mosaics.</p></div>
+        <div><p class="h" data-i="m42">Reading a filename</p><p data-i="m43">The first two letters are the instrument, the next one is a colour flag (E raw Bayer, M monochrome), then come timestamps, the rover site and drive, and the product type.</p></div>
+      </div>
+      <p class="h" data-i="m44">Instrument codes in filenames</p>
+      <div class="tbl-wrap"><table class="data" style="max-width:420px"><tr><td><code>NL / NR</code></td><td>Navcam</td></tr><tr><td><code>FL / FR</code></td><td>Front Hazcam</td></tr><tr><td><code>RL / RR</code></td><td>Rear Hazcam</td></tr><tr><td><code>ZL / ZR</code></td><td>Mastcam-Z</td></tr><tr><td><code>LR</code></td><td>SuperCam RMI</td></tr><tr><td><code>SI</code></td><td>SHERLOC WATSON</td></tr><tr><td><code>SC</code></td><td>SHERLOC ACI</td></tr><tr><td><code>CC</code></td><td>CacheCam</td></tr><tr><td><code>HN / HS</code></td><td>Helicopter Nav / RTE</td></tr></table></div>
+      <p class="hint" data-i="m45">Read the full specification: <a href="https://pds-geosciences.wustl.edu/m2020/urn-nasa-pds-mars2020_mission/document_camera/Mars2020_Camera_SIS.pdf" target="_blank" rel="noopener">Mars2020_Camera_SIS.pdf</a> (PDS Geosciences Node, about 18 MB).</p>
     </section>
 
     <!-- METHOD -->
-    <section class="panel" id="tab-method" role="tabpanel">
-      <h3>What ALTERGEA does</h3>
-      <p>It ranks Earth locations by how closely their environment resembles the conditions expected at permanent Moon
+<section class="panel" id="tab-method" role="tabpanel">
+<h3 data-i="t057">What ALTERGEA does</h3>
+<p data-i="t058">It ranks Earth locations by how closely their environment resembles the conditions expected at permanent Moon
         and Mars base sites, to help choose training fields on Earth. The flagship candidate is the <b>Médano Blanco dune
         field (Sechura, Piura)</b> as an analog of the <b>Bagnold Dunes (Gale crater)</b>.</p>
-      <h3>Data used</h3>
-      <ul>
-        <li><b>NASA POWER</b>: precipitation (<code>PRECTOTCORR</code>), daily temperature range (<code>T2M_RANGE</code>),
+<h3 data-i="t059">Data used</h3>
+<ul>
+<li data-i="t060"><b>NASA POWER</b>: precipitation (<code>PRECTOTCORR</code>), daily temperature range (<code>T2M_RANGE</code>),
           surface albedo (<code>ALLSKY_SRF_ALB</code>) and 10 m wind, mean and max (<code>WS10M</code>, <code>WS10M_MAX</code>),
           climatological means. Precomputed for the 14 base sites; fetched live for sites you add.</li>
-        <li><b>Copernicus DEM GLO-30</b> (ESA) via <b>Microsoft Planetary Computer</b> (STAC API with public signing, no
+<li data-i="t061"><b>Copernicus DEM GLO-30</b> (ESA) via <b>Microsoft Planetary Computer</b> (STAC API with public signing, no
           account): altitude, mean slope at 30 m and detrended roughness over a ~3 km window. This is the slope the model
           uses, at the resolution the Mars side (HiRISE DTM resampled to 30 m) can match. Precomputed for the base sites.</li>
-        <li><b>SRTM</b> (NASA/NGA) elevation, <b>ASTER GDEM</b> (NASA/METI) fallback for polar sites, via OpenTopoData:
+<li data-i="t062"><b>SRTM</b> (NASA/NGA) elevation, <b>ASTER GDEM</b> (NASA/METI) fallback for polar sites, via OpenTopoData:
           altitude and a regional slope over a ~4 km window (5×5 grid, ~1 km spacing); used for sites you add here.</li>
-        <li><b>NASA Mars Trek</b> WMTS tiles: Viking MDIM 2.1, MOLA colour hillshade (463 m), MRO CTX Gale mosaic,
+<li data-i="t063"><b>NASA Mars Trek</b> WMTS tiles: Viking MDIM 2.1, MOLA colour hillshade (463 m), MRO CTX Gale mosaic,
           MRO HiRISE Curiosity roving-site mosaic, HiRISE 1 m DEM of Gale.</li>
-        <li><b>NASA GIBS / Worldview</b>: MODIS Terra, VIIRS NOAA-21 and VIIRS SNPP true-colour tiles as Earth overlays, with a date control in the side panel. <a href="https://worldview.earthdata.nasa.gov/index.html?v=-504.22662231419474,-190.8513647590744,359.77337768580526,219.7736352409256&amp;t=2026-09-07-T01%3A58%3A13Z" target="_blank" rel="noopener">Open NASA Worldview</a>.</li>
-        <li><b>NASA Earthdata Search</b>: catalogue of NASA Earth-observation datasets. The CMR API is queried live for the collections and
+<li data-i="t064"><b>NASA GIBS / Worldview</b>: MODIS Terra, VIIRS NOAA-21 and VIIRS SNPP true-colour tiles as Earth overlays, with a date control in the side panel. <a href="https://worldview.earthdata.nasa.gov/index.html?v=-504.22662231419474,-190.8513647590744,359.77337768580526,219.7736352409256&amp;t=2026-09-07-T01%3A58%3A13Z" rel="noopener" target="_blank">Open NASA Worldview</a>.</li>
+<li data-i="t065"><b>NASA Earthdata Search</b>: catalogue of NASA Earth-observation datasets. The CMR API is queried live for the collections and
           granules (MODIS, Harmonized Landsat/Sentinel-2) that cover each site.
-          <a href="https://search.earthdata.nasa.gov/search?q=sechura&amp;lat=-5.940280099950111&amp;long=-80.54643451544943&amp;overlays=bordersRoads%2Ccoastlines%2CplaceLabels&amp;zoom=10.81509069402037" target="_blank" rel="noopener">Open the Sechura search</a>.</li>
-        <li><b>NASA PDS Geosciences Node, Mars Exploration Program</b> (MSL Curiosity, MER Spirit and Opportunity, Mars 2020):
+          <a href="https://search.earthdata.nasa.gov/search?q=sechura&amp;lat=-5.940280099950111&amp;long=-80.54643451544943&amp;overlays=bordersRoads%2Ccoastlines%2CplaceLabels&amp;zoom=10.81509069402037" rel="noopener" target="_blank">Open the Sechura search</a>.</li>
+<li data-i="t066"><b>NASA PDS Geosciences Node, Mars Exploration Program</b> (MSL Curiosity, MER Spirit and Opportunity, Mars 2020):
           the Orbital Data Explorer is queried live for HiRISE DTMs and images around each rover site (Mars twin tab).
-          <a href="https://pds-geosciences.wustl.edu/missions/mep/index.htm" target="_blank" rel="noopener">Open the portal</a>.</li>
-        <li><b>Copernicus Sentinel-2 L2A</b> via Planetary Computer (Earth Search on AWS as fallback catalogue): cloud-free
+          <a href="https://pds-geosciences.wustl.edu/missions/mep/index.htm" rel="noopener" target="_blank">Open the portal</a>.</li>
+<li data-i="t067"><b>Copernicus Sentinel-2 L2A</b> via Planetary Computer (Earth Search on AWS as fallback catalogue): cloud-free
           scenes 2017–2026 to measure the dune's migration by masked cross-correlation (see the Mars twin tab).</li>
-        <li><b>INGEMMET GEOCATMIN</b>: integrated 1:100k geology and geomorphology, as WMS overlays and point queries.</li>
-        <li><b>MINAM / SINIA</b> (2022): Médano Blanco diagnostic: dune type, area, migration 2006–2022, management.</li>
-      </ul>
-      <h3>Similarity model</h3>
-      <p id="method_model"></p>
-      <h3>Limitations</h3>
-      <ul>
-        <li>NASA POWER cells are ~50 km: values describe regional climate, not an exact point.</li>
-        <li>Slope is a regional mean from ~1 km spacing, not metre-scale terrain. Earth–Mars slope or roughness
+<li data-i="t068"><b>INGEMMET GEOCATMIN</b>: integrated 1:100k geology and geomorphology, as WMS overlays and point queries.</li>
+<li data-i="t069"><b>MINAM / SINIA</b> (2022): Médano Blanco diagnostic: dune type, area, migration 2006–2022, management.</li>
+</ul>
+<h3 data-i="t070">Similarity model</h3>
+<p id="method_model"></p>
+<h3 data-i="t071">Limitations</h3>
+<ul>
+<li data-i="t072">NASA POWER cells are ~50 km: values describe regional climate, not an exact point.</li>
+<li data-i="t073">Slope is a regional mean from ~1 km spacing, not metre-scale terrain. Earth–Mars slope or roughness
           comparisons must use matched resolution.</li>
-        <li>The Médano Blanco ↔ Bagnold analogy is morphological and process-based, not mineralogical.</li>
-        <li>Thresholds and weights are documented assumptions. Next step: calibrate with Mars (MOLA, MEDA/REMS) and Moon
+<li data-i="t074">The Médano Blanco ↔ Bagnold analogy is morphological and process-based, not mineralogical.</li>
+<li data-i="t075">Thresholds and weights are documented assumptions. Next step: calibrate with Mars (MOLA, MEDA/REMS) and Moon
           (LOLA, Diviner) reference sites, and add INGEMMET lithology to the score.</li>
-      </ul>
-      <h3>Use of AI</h3>
-      <p>Claude (Anthropic) was used as a coding assistant to write and debug the code. The idea, site selection, model
+</ul>
+<h3 data-i="t076">Use of AI</h3>
+<p data-i="t077">Claude (Anthropic) was used as a coding assistant to write and debug the code. The idea, site selection, model
         design and interpretation were done by the team.</p>
-      <h3>References</h3>
-      <ul class="refs">
-        <li>NASA POWER Project, <a href="https://power.larc.nasa.gov">power.larc.nasa.gov</a> · NASA Mars Trek,
+<h3 data-i="t078">References</h3>
+<ul class="refs">
+<li data-i="t079">NASA POWER Project, <a href="https://power.larc.nasa.gov">power.larc.nasa.gov</a> · NASA Mars Trek,
           <a href="https://trek.nasa.gov/mars">trek.nasa.gov/mars</a> · NASA GIBS, <a href="https://gibs.earthdata.nasa.gov">gibs.earthdata.nasa.gov</a></li>
-        <li>NASA Worldview, <a href="https://worldview.earthdata.nasa.gov/index.html?v=-504.22662231419474,-190.8513647590744,359.77337768580526,219.7736352409256&amp;t=2026-09-07-T01%3A58%3A13Z" target="_blank" rel="noopener">worldview.earthdata.nasa.gov</a></li>
-        <li>NASA Earthdata Search, <a href="https://search.earthdata.nasa.gov/search?q=sechura&amp;lat=-5.940280099950111&amp;long=-80.54643451544943&amp;overlays=bordersRoads%2Ccoastlines%2CplaceLabels&amp;zoom=10.81509069402037" target="_blank" rel="noopener">search.earthdata.nasa.gov (Sechura)</a></li>
-        <li>NASA PDS Geosciences Node, Mars Exploration Program, <a href="https://pds-geosciences.wustl.edu/missions/mep/index.htm" target="_blank" rel="noopener">pds-geosciences.wustl.edu/missions/mep</a></li>
-        <li>Microsoft Planetary Computer (Copernicus DEM GLO-30, Sentinel-2 L2A), <a href="https://planetarycomputer.microsoft.com">planetarycomputer.microsoft.com</a></li>
-        <li>SRTM (NASA/NGA) and ASTER GDEM (NASA/METI), served by <a href="https://www.opentopodata.org">OpenTopoData</a></li>
-        <li>Earth Search STAC (Element 84), <a href="https://earth-search.aws.element84.com/v1">earth-search.aws.element84.com</a></li>
-        <li>INGEMMET, GEOCATMIN: <a href="https://geocatmin.ingemmet.gob.pe">geocatmin.ingemmet.gob.pe</a></li>
-        <li>MINAM / SINIA, Diagnóstico y microzonificación del ámbito de uso turístico de la duna Médano Blanco (2022),
+<li data-i="t080">NASA Worldview, <a href="https://worldview.earthdata.nasa.gov/index.html?v=-504.22662231419474,-190.8513647590744,359.77337768580526,219.7736352409256&amp;t=2026-09-07-T01%3A58%3A13Z" rel="noopener" target="_blank">worldview.earthdata.nasa.gov</a></li>
+<li data-i="t081">NASA Earthdata Search, <a href="https://search.earthdata.nasa.gov/search?q=sechura&amp;lat=-5.940280099950111&amp;long=-80.54643451544943&amp;overlays=bordersRoads%2Ccoastlines%2CplaceLabels&amp;zoom=10.81509069402037" rel="noopener" target="_blank">search.earthdata.nasa.gov (Sechura)</a></li>
+<li data-i="t082">NASA PDS Geosciences Node, Mars Exploration Program, <a href="https://pds-geosciences.wustl.edu/missions/mep/index.htm" rel="noopener" target="_blank">pds-geosciences.wustl.edu/missions/mep</a></li>
+<li data-i="t083">Microsoft Planetary Computer (Copernicus DEM GLO-30, Sentinel-2 L2A), <a href="https://planetarycomputer.microsoft.com">planetarycomputer.microsoft.com</a></li>
+<li data-i="t084">SRTM (NASA/NGA) and ASTER GDEM (NASA/METI), served by <a href="https://www.opentopodata.org">OpenTopoData</a></li>
+<li data-i="t085">Earth Search STAC (Element 84), <a href="https://earth-search.aws.element84.com/v1">earth-search.aws.element84.com</a></li>
+<li data-i="t086">INGEMMET, GEOCATMIN: <a href="https://geocatmin.ingemmet.gob.pe">geocatmin.ingemmet.gob.pe</a></li>
+<li data-i="t087">MINAM / SINIA, Diagnóstico y microzonificación del ámbito de uso turístico de la duna Médano Blanco (2022),
           <a href="https://sinia.minam.gob.pe/documentos/diagnostico-microzonificacion-ambito-uso-turistico-duna-medano">sinia.minam.gob.pe</a></li>
-        <li>Bridges, N. T. et al. (2018). The MSL Bagnold Dunes Campaign, Phase I. <i>JGR Planets</i>, doi:10.1002/2017JE005401</li>
-        <li>Silvestro, S. et al. (2013). Pervasive aeolian activity along rover Curiosity's traverse in Gale Crater. <i>Geology</i> 41, 483–486</li>
-        <li>Baker, M. M. et al. (2018). The Bagnold Dunes in southern summer. <i>GRL</i>, doi:10.1029/2018GL079040</li>
-        <li>Maps: Leaflet; imagery: Esri, Maxar, Earthstar Geographics; OpenStreetMap contributors; charts: Plotly.</li>
-      </ul>
-    </section>
-  </main>
+<li data-i="t088">Bridges, N. T. et al. (2018). The MSL Bagnold Dunes Campaign, Phase I. <i>JGR Planets</i>, doi:10.1002/2017JE005401</li>
+<li data-i="t089">Silvestro, S. et al. (2013). Pervasive aeolian activity along rover Curiosity's traverse in Gale Crater. <i>Geology</i> 41, 483–486</li>
+<li data-i="t090">Baker, M. M. et al. (2018). The Bagnold Dunes in southern summer. <i>GRL</i>, doi:10.1029/2018GL079040</li>
+<li data-i="t091">Maps: Leaflet; imagery: Esri, Maxar, Earthstar Geographics; OpenStreetMap contributors; charts: Plotly.</li>
+</ul>
+</section>
+</main>
 </div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
-<script src="nasa.js?v=20261121"></script>
-<script src="app.js?v=20261121"></script>
+<script crossorigin="" src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script charset="utf-8" src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="i18n.js?v=20261122"></script>
+<script src="planets.js?v=20261123"></script>
+<script src="nasa.js?v=20261122"></script>
+<script src="app.js?v=20261122"></script>
 </body>
 </html>
