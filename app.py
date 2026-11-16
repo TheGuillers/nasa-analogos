@@ -893,7 +893,9 @@ Moon and Mars base sites, to help choose training fields on Earth. The flagship 
 - **NASA Mars Trek** (trek.nasa.gov) WMTS tiles for the Mars side of the twin view: Viking MDIM 2.1 colour
   mosaic, MOLA colour hillshade (463 m), MRO CTX Gale crater mosaic, MRO HiRISE Curiosity roving-site mosaic and
   HiRISE 1 m DEM of Gale.
-- **NASA GIBS / Worldview** (gibs.earthdata.nasa.gov): MODIS Terra true-colour tiles as an Earth base layer.
+- **NASA GIBS / Worldview** (gibs.earthdata.nasa.gov): MODIS Terra true-colour tiles as an Earth base layer. ([Open Worldview](https://worldview.earthdata.nasa.gov/index.html?v=-504.22662231419474,-190.8513647590744,359.77337768580526,219.7736352409256&t=2026-09-07-T01%3A58%3A13Z))
+- **NASA Earthdata Search** (search.earthdata.nasa.gov): catalogue of NASA Earth-observation datasets to find and
+  download granules over the Médano Blanco / Sechura area ([Sechura search](https://search.earthdata.nasa.gov/search?q=sechura&lat=-5.940280099950111&long=-80.54643451544943&overlays=bordersRoads%2Ccoastlines%2CplaceLabels&zoom=10.81509069402037)).
 - **INGEMMET GEOCATMIN** (Peru Geological Survey): integrated 1:100k geology and geomorphology, as WMS overlays
   and point queries for sites in Peru. Used as **local geological context**; not part of the score.
 - **MINAM / SINIA** (2022): *Diagnóstico y microzonificación de la duna Médano Blanco*: dune type, area,
@@ -929,6 +931,8 @@ model design and interpretation were done by the team.
 ### References
 - NASA POWER Project, https://power.larc.nasa.gov
 - NASA Mars Trek, https://trek.nasa.gov/mars · NASA GIBS, https://gibs.earthdata.nasa.gov
+- NASA Worldview, https://worldview.earthdata.nasa.gov/index.html?v=-504.22662231419474,-190.8513647590744,359.77337768580526,219.7736352409256&t=2026-09-07-T01%3A58%3A13Z
+- NASA Earthdata Search, https://search.earthdata.nasa.gov/search?q=sechura&lat=-5.940280099950111&long=-80.54643451544943&overlays=bordersRoads%2Ccoastlines%2CplaceLabels&zoom=10.81509069402037
 - Microsoft Planetary Computer (Copernicus DEM GLO-30, Sentinel-2 L2A), https://planetarycomputer.microsoft.com
 - SRTM (NASA/NGA) and ASTER GDEM (NASA/METI), served by OpenTopoData, https://www.opentopodata.org
 - INGEMMET, GEOCATMIN: https://geocatmin.ingemmet.gob.pe
