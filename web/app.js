@@ -45,7 +45,7 @@ const FMT = { aridity: r => `${Math.round(r.precip_mm)} mm/yr`, thermal: r => `$
 // ---------- state ----------
 const S = { target: 'Mars', W: { ...DEFAULT_W.Mars }, P: { slope: 10, arid: 150, wind: 6 }, alb: { ...ALBEDO },
   base: [], custom: [], res: [], focus: null, topn: 14, exSites: [], exActive: {}, marsRef: Object.keys(MARS_REFS)[0],
-  blend: 0.5, s2: null, s2rows: [], peru: null };
+  blend: 0.5, s2: null, s2rows: [], peru: null, piura: false };
 try { S.custom = JSON.parse(localStorage.getItem('altergea_custom') || '[]'); } catch (e) { S.custom = []; }
 
 const $ = s => document.querySelector(s);
@@ -78,7 +78,7 @@ const mtext = s => s >= .6 ? '#ffffff' : NAVY;
 
 function compute() {
   const W = Object.values(S.W).reduce((a, b) => a + b, 0) > 0 ? S.W : DEFAULT_W[S.target];
-  const rows = [...S.base, ...S.custom].map(r => {
+  const rows = [...S.base, ...S.custom].filter(r => !S.piura || inPiura(r)).map(r => {
     const c = components(r, S.target);
     const other = S.target === 'Mars' ? 'Moon' : 'Mars';
     return { ...r, comps: c, score: similarity(c, W),
@@ -121,6 +121,7 @@ function buildSidebar() {
   bind('#p_wind', '#o_wind', 'wind', S.P, v => v.toFixed(1));
   $('#p_alb').addEventListener('input', e => { S.alb[S.target] = +e.target.value; $('#o_alb').textContent = S.alb[S.target].toFixed(2); update(); });
   $('#reset_params').addEventListener('click', () => { setTarget(S.target, true); });
+  $('#only_piura').addEventListener('change', e => { S.piura = e.target.checked; update(); setFocus(null); });
   document.querySelectorAll('.seg-btn').forEach(b => b.addEventListener('click', () => setTarget(b.dataset.target, true)));
   $('#add_site').addEventListener('click', addCustomSite);
   $('#clear_sites').addEventListener('click', () => { S.custom = []; persistCustom(); update(); });
@@ -249,7 +250,7 @@ function setFocus(site) {
   S.focus = site;
   const anim = !document.hidden;   // hidden tabs pause animations: jump instead of flying
   if (site) { const r = S.res.find(x => x.site === site); if (r) maps.main[anim ? 'flyTo' : 'setView']([r.lat, r.lon], 9, { duration: 1.2 }); }
-  else { const b = L.latLngBounds(S.res.map(r => [r.lat, r.lon])).pad(0.1); maps.main[anim ? 'flyToBounds' : 'fitBounds'](b, { duration: .9, maxZoom: 3 }); }
+  else { const b = L.latLngBounds(S.res.map(r => [r.lat, r.lon])).pad(0.1); maps.main[anim ? 'flyToBounds' : 'fitBounds'](b, { duration: .9, maxZoom: S.piura ? 9 : 3 }); }
   if (site && !maps.backOn) { maps.back.addTo(maps.main); maps.backOn = true; }
   if (!site && maps.backOn) { maps.back.remove(); maps.backOn = false; }
   $('#focus_sel').value = site || '';
@@ -473,6 +474,7 @@ function jsonp(url, timeout = 45000) {
   });
 }
 let peruBuilt = false;
+const inPiura = r => r.lat >= -6.4 && r.lat <= -3.9 && r.lon >= -81.4 && r.lon <= -79.2;   // Piura region (bounding box)
 const inPeru = r => r.lat >= -18.5 && r.lat <= 0.1 && r.lon >= -81.5 && r.lon <= -68.5;
 function ensurePeru() {
   const sel = $('#peru_sel'); const peru = S.res.filter(inPeru);
@@ -539,7 +541,7 @@ function parseCsv(text) {
 
 async function init() {
   buildSidebar(); buildTabs(); buildMap();
-  const DATA_V = '?v=20261115';     // bump together with the script tag in index.html when data files change
+  const DATA_V = '?v=20261117';     // bump together with the script tag in index.html when data files change
   try {
     const js = await (await fetch('data/sites.json' + DATA_V, { cache: 'no-cache' })).json();
     S.base = js.sites.map(r => { for (const k in r) if (r[k] === null) r[k] = NaN; return r; });

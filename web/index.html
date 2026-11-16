@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-<link rel="stylesheet" href="styles.css?v=20261115">
+<link rel="stylesheet" href="styles.css?v=20261117">
 </head>
 <body>
 <div class="shell">
@@ -25,6 +25,9 @@
       <button class="seg-btn is-on" data-target="Mars" role="radio" aria-checked="true">Mars</button>
       <button class="seg-btn" data-target="Moon" role="radio" aria-checked="false">Moon</button>
     </div>
+
+    <label class="lbl" style="display:flex;gap:.5em;align-items:center;margin-top:12px"><input type="checkbox" id="only_piura"> Show only Piura</label>
+    <p class="hint" id="piura_hint" hidden></p>
 
     <details class="box">
       <summary>Model parameters</summary>
@@ -229,6 +232,6 @@
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
-<script src="app.js?v=20261115"></script>
+<script src="app.js?v=20261117"></script>
 </body>
 </html>
