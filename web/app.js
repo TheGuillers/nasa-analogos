@@ -541,7 +541,7 @@ function parseCsv(text) {
 
 async function init() {
   buildSidebar(); buildTabs(); buildMap();
-  const DATA_V = '?v=20261117';     // bump together with the script tag in index.html when data files change
+  const DATA_V = '?v=20261118';     // bump together with the script tag in index.html when data files change
   try {
     const js = await (await fetch('data/sites.json' + DATA_V, { cache: 'no-cache' })).json();
     S.base = js.sites.map(r => { for (const k in r) if (r[k] === null) r[k] = NaN; return r; });
